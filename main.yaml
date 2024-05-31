@@ -1,0 +1,385 @@
+substitutions:
+  name: 'coder'
+  effects: '17'
+
+esphome:
+  name: ${name}
+
+esp32:
+  board: esp32doit-devkit-v1
+
+button:
+- platform: safe_mode
+  name: Safe Mode Boot
+  entity_category: diagnostic
+
+output:
+  - platform: gpio
+    pin: GPIO15
+    id: gpio_15
+
+switch:
+  - platform: gpio
+    pin: GPIO16
+    id: shunt
+    name: shunt
+
+light:
+  - platform: binary
+    output: gpio_15
+    id: relay
+    name: relay
+    effects:
+      - strobe:
+          name: March 20
+          colors:
+            - state: true
+              duration: 1500ms
+            - state: false
+              duration: 1500ms
+
+      - strobe:
+          name: March 30
+          colors:
+            - state: true
+              duration: 1000ms
+            - state: false
+              duration: 1000ms
+
+      - strobe:
+          name: March 60
+          colors:
+            - state: true
+              duration: 500ms
+            - state: false
+              duration: 500ms
+
+      - strobe:
+          name: March 90
+          colors:
+            - state: true
+              duration: 333ms
+            - state: false
+              duration: 333ms
+
+      - strobe:
+          name: March 120
+          colors:
+            - state: true
+              duration: 250ms
+            - state: false
+              duration: 250ms
+
+      - strobe:
+          name: March 150
+          colors:
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+      - strobe:
+          name: March 180
+          colors:
+            - state: true
+              duration: 166ms
+            - state: false
+              duration: 166ms
+
+      - strobe:
+          name: March 200
+          colors:
+            - state: true
+              duration: 150ms
+            - state: false
+              duration: 150ms
+
+      - strobe:
+          name: March 250
+          colors:
+            - state: true
+              duration: 120ms
+            - state: false
+              duration: 120ms
+
+      - strobe:
+          name: March 300 / Steady T4
+          colors:
+            - state: true
+              duration: 100ms
+            - state: false
+              duration: 100ms
+
+      - lambda:
+          name: California Code
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(relay).turn_on();
+            if (state == 0 || state >20) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 30)
+              state = 0;
+
+      - lambda:
+          name: Pulsed California Code
+          update_interval: 250ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(relay).turn_on();
+            if (state > 40 || state % 2 == 0) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 60)
+              state = 0;
+
+      - lambda:
+          name: 4-4
+          update_interval: 250ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(relay).turn_on();
+            if (state != 1 && state != 3 && state != 5 && state != 7 &&
+               state != 12 && state != 14 && state != 16 && state != 18) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 38)
+              state = 0;
+
+
+      - lambda:
+          name: 4-4-4-4
+          update_interval: 250ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(relay).turn_on();
+            if (state != 1 && state != 3 && state != 5 && state != 7 &&
+               state != 12 && state != 14 && state != 16 && state != 18 &&
+               state != 23 && state != 25 && state != 27 && state != 29 &&
+               state != 34 && state != 36 && state != 38 && state != 40) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 60)
+              state = 0;
+
+      - lambda:
+          name: Temporal 3
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(relay).turn_on();
+            if (state != 1 && state != 3 && state != 5) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 8)
+              state = 0;
+
+      - lambda:
+          name: Temporal 4
+          update_interval: 100ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(relay).turn_on();
+            if (state != 1 && state != 3 && state != 5 && state != 7) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 57)
+              state = 0;
+
+globals:
+ - id: active_effect
+   type: int
+   restore_value: yes
+   initial_value: '0'
+
+sensor:
+
+  - platform: wifi_signal
+    name: "$name WiFi Signal"
+    update_interval: 5min
+
+  - platform: uptime
+    name: "$name Uptime"
+    id: uptime_sensor
+    update_interval: 5min
+
+script:
+  - id: set_effect
+    parameters:
+      number: int
+    then:
+      - lambda: |-
+          auto call = id(relay).turn_on();
+          switch (number) {
+            case 1:
+              call.set_effect("None");
+              break;
+            case 2:
+              call.set_effect("Temporal 3");
+              break;
+            case 3:
+              call.set_effect("Temporal 4");
+              break;
+            case 4:
+              call.set_effect("March 20");
+              break;
+            case 5:
+              call.set_effect("March 30");
+              break;
+            case 6:
+              call.set_effect("March 60");
+              break;
+            case 7:
+              call.set_effect("March 90");
+              break;
+            case 8:
+              call.set_effect("March 120");
+              break;
+            case 9:
+              call.set_effect("March 150");
+              break;
+            case 10:
+              call.set_effect("March 180");
+              break;
+            case 11:
+              call.set_effect("March 200");
+              break;
+            case 12:
+              call.set_effect("March 250");
+              break;
+            case 13:
+              call.set_effect("March 300 / Steady T4");
+              break;
+            case 14:
+              call.set_effect("California Code");
+              break;
+            case 15:
+              call.set_effect("Pulsed California Code");
+              break;
+            case 16:
+              call.set_effect("4-4");
+              break;
+            case 17:
+              call.set_effect("4-4-4-4");
+              break;
+            default:
+              id(relay).turn_on().set_effect("None").perform();
+              call.set_brightness(0);
+              break;
+          }
+          call.perform();
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO23
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Up"
+    on_click:
+      - lambda: !lambda |-
+          id(active_effect) += 1;
+          if (id(active_effect) > ${effects}) {
+              id(active_effect) = 0;
+              id(set_effect)->execute(0);
+          } else {
+              id(set_effect)->execute(id(active_effect));
+          }
+
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Down"
+    on_click:
+      - lambda: !lambda |-
+          id(active_effect) -= 1;
+          if (id(active_effect) < 0) {
+              id(active_effect) = ${effects};
+              id(set_effect)->execute(${effects});
+          } else {
+              id(set_effect)->execute(id(active_effect));
+          }
+
+  - platform: gpio
+    pin:
+      number: GPIO22
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Middle"
+    on_click:
+      - switch.toggle: shunt
+
+# Enable logging
+logger:
+  #  level: VERBOSE
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret wifi_portal_ssid
+    password: !secret wifi_portal_password
+
+captive_portal:
+
