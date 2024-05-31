@@ -1,5 +1,5 @@
 # Fire Alarm Sequencer: Virtual Coded Pull Station Module
-This module aims to recreate the notion of an old-school, mechanical pull station with code wheels, in the style of an addressable module.
+This module aims to recreate the notion of an antique mechanical fire pull station with code wheels, in the style of a modern addressable pull station module.
 
 Currently, support for the major codes and various march BPMs are included, but future use cases may include simulating actual various station codes.
 
