@@ -1,6 +1,7 @@
 substitutions:
   name: 'coder'
-  effects: '17'
+  effects: '7'
+  march_effects: '10'
 
 esphome:
   name: ${name}
@@ -258,46 +259,46 @@ script:
               call.set_effect("Temporal 4");
               break;
             case 4:
-              call.set_effect("March 20");
-              break;
-            case 5:
-              call.set_effect("March 30");
-              break;
-            case 6:
-              call.set_effect("March 60");
-              break;
-            case 7:
-              call.set_effect("March 90");
-              break;
-            case 8:
-              call.set_effect("March 120");
-              break;
-            case 9:
-              call.set_effect("March 150");
-              break;
-            case 10:
-              call.set_effect("March 180");
-              break;
-            case 11:
-              call.set_effect("March 200");
-              break;
-            case 12:
-              call.set_effect("March 250");
-              break;
-            case 13:
-              call.set_effect("March 300 / Steady T4");
-              break;
-            case 14:
-              call.set_effect("California Code");
-              break;
-            case 15:
-              call.set_effect("Pulsed California Code");
-              break;
-            case 16:
               call.set_effect("4-4");
               break;
-            case 17:
+            case 5:
               call.set_effect("4-4-4-4");
+              break;
+            case 6:
+              call.set_effect("California Code");
+              break;
+            case 7:
+              call.set_effect("Pulsed California Code");
+              break;
+            case 8:
+              call.set_effect("March 20");
+              break;
+            case 9:
+              call.set_effect("March 30");
+              break;
+            case 10:
+              call.set_effect("March 60");
+              break;
+            case 11:
+              call.set_effect("March 90");
+              break;
+            case 12:
+              call.set_effect("March 120");
+              break;
+            case 13:
+              call.set_effect("March 150");
+              break;
+            case 14:
+              call.set_effect("March 180");
+              break;
+            case 15:
+              call.set_effect("March 200");
+              break;
+            case 16:
+              call.set_effect("March 250");
+              break;
+            case 17:
+              call.set_effect("March 300 / Steady T4");
               break;
             default:
               id(relay).turn_on().set_effect("None").perform();
@@ -347,6 +348,73 @@ binary_sensor:
               id(set_effect)->execute(id(active_effect));
           }
 
+
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    name: "March Up"
+
+    on_click:
+      - lambda: !lambda |-
+          id(active_effect) += 1;
+          if (id(active_effect) > ${effects} + ${march_effects}) {
+              id(active_effect) = ${effects} + 1;
+              id(set_effect)->execute(id(active_effect));
+          } else {
+              id(set_effect)->execute(id(active_effect));
+          }
+
+
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "March Down"
+    on_click:
+      - lambda: !lambda |-
+          id(active_effect) -= 1;
+          if (id(active_effect) < ${effects} + 1) {
+              id(active_effect) = ${effects} + ${march_effects};
+              id(set_effect)->execute(id(active_effect));
+              ESP_LOGD("test", "${effects} + 1");
+          } else {
+              id(set_effect)->execute(id(active_effect));
+          }
+
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Code Up"
+
+
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Code Down"
+
   - platform: gpio
     pin:
       number: GPIO22
@@ -356,9 +424,31 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
 
-    name: "Middle"
+    name: "Shunt"
     on_click:
       - switch.toggle: shunt
+
+  - platform: gpio
+    pin:
+      number: GPIO21
+      inverted: true
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "NAC Input"
+    on_press:
+      - script.execute:
+          id: set_effect
+          number: !lambda |-
+            return id(active_effect);
+      - switch.turn_on: shunt
+    on_release:
+      - light.turn_off: relay
+      - switch.turn_off: shunt
+
 
 # Enable logging
 logger:
