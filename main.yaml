@@ -251,7 +251,6 @@ globals:
    initial_value: '0'
 
 sensor:
-
   - platform: wifi_signal
     name: "$name WiFi Signal"
     update_interval: 5min
@@ -361,7 +360,7 @@ binary_sensor:
     on_click:
       - lambda: !lambda |-
           id(active_effect) -= 1;
-          if (id(active_effect) < 0) {
+          if ((id(active_effect) < 0) || (id(active_effect) > ${effects}))  {
               id(active_effect) = ${effects};
               id(set_effect)->execute(${effects});
           } else {
