@@ -18,11 +18,11 @@ button:
 output:
   - platform: gpio
     pin: GPIO16
-    id: code
+    id: relaygpio
 
   - platform: gpio
     pin: GPIO23
-    id: led23
+    id: ledgpio
     inverted: true
 
 switch:
@@ -32,20 +32,24 @@ switch:
     name: shunt
 
 light:
+  - platform: binary
+    output: relaygpio
+    id: relay
+    name: relay
+    internal: true
+
+  - platform: binary
+    output: ledgpio
+    id: led
+    name: led
+    internal: true
+
   - platform: partition
-    name: outputs
+    id: code
+    name: code
     segments:
       - single_light_id: relay
       - single_light_id: led
-  - platform: binary
-    output: led23
-    id: led
-    name: led
-
-  - platform: binary
-    output: code
-    id: relay
-    name: relay
     effects:
       - strobe:
           name: March 20
@@ -135,7 +139,7 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(relay).turn_on();
+            auto call = id(code).turn_on();
             if (state == 0 || state >20) {
               call.set_brightness(0);
             }
@@ -153,7 +157,7 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(relay).turn_on();
+            auto call = id(code).turn_on();
             if (state > 40 || state % 2 == 0) {
               call.set_brightness(0);
             }
@@ -171,7 +175,7 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(relay).turn_on();
+            auto call = id(code).turn_on();
             if (state != 1 && state != 3 && state != 5 && state != 7 &&
                state != 12 && state != 14 && state != 16 && state != 18) {
               call.set_brightness(0);
@@ -191,7 +195,7 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(relay).turn_on();
+            auto call = id(code).turn_on();
             if (state != 1 && state != 3 && state != 5 && state != 7 &&
                state != 12 && state != 14 && state != 16 && state != 18 &&
                state != 23 && state != 25 && state != 27 && state != 29 &&
@@ -212,7 +216,7 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(relay).turn_on();
+            auto call = id(code).turn_on();
             if (state != 1 && state != 3 && state != 5) {
               call.set_brightness(0);
             }
@@ -230,7 +234,7 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(relay).turn_on();
+            auto call = id(code).turn_on();
             if (state != 1 && state != 3 && state != 5 && state != 7) {
               call.set_brightness(0);
             }
@@ -263,7 +267,7 @@ script:
       number: int
     then:
       - lambda: |-
-          auto call = id(relay).turn_on();
+          auto call = id(code).turn_on();
           switch (number) {
             case 1:
               call.set_effect("None");
@@ -317,7 +321,7 @@ script:
               call.set_effect("March 300 / Steady T4");
               break;
             default:
-              id(relay).turn_on().set_effect("None").perform();
+              id(code).turn_on().set_effect("None").perform();
               call.set_brightness(0);
               break;
           }
