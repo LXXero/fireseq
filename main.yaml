@@ -451,7 +451,7 @@ binary_sensor:
             condition:
                 - switch.is_on: shunt
             then:
-              - light.turn_off: relay
+              - light.turn_off: code
               - switch.turn_off: shunt
             else:
               - script.execute:
