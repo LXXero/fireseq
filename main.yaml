@@ -278,16 +278,16 @@ script:
               call.set_effect("Temporal 4");
               break;
             case 4:
-              call.set_effect("4-4");
-              break;
-            case 5:
-              call.set_effect("4-4-4-4");
-              break;
-            case 6:
               call.set_effect("California Code");
               break;
-            case 7:
+            case 5:
               call.set_effect("Pulsed California Code");
+              break;
+            case 6:
+              call.set_effect("4-4");
+              break;
+            case 7:
+              call.set_effect("4-4-4-4");
               break;
             case 8:
               call.set_effect("March 20");
