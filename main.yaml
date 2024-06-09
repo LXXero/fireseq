@@ -478,7 +478,7 @@ binary_sensor:
             return id(active_effect);
       - switch.turn_on: shunt
     on_release:
-      - light.turn_off: relay
+      - light.turn_off: code
       - switch.turn_off: shunt
 
 
