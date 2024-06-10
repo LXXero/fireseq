@@ -2,7 +2,7 @@ substitutions:
   name: 'coder'
   effects: '7'
   march_effects: '10'
-  code_effects: '2'
+  code_effects: '3'
 
 esphome:
   name: ${name}
@@ -177,6 +177,49 @@ light:
             - state: true
               duration: 500ms
 
+
+      - strobe:
+          name: Smart Sync Silence
+          colors:
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 250ms
+            - state: true
+              duration: 750ms
 
       - lambda:
           name: California Code
@@ -391,6 +434,9 @@ script:
               break;
             case 19:
               call.set_effect("Smart Sync");
+              break;
+            case 20:
+              call.set_effect("Smart Sync Silence");
               break;
             default:
               id(code).turn_on().set_effect("None").perform();
