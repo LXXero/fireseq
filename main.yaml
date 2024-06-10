@@ -2,7 +2,7 @@ substitutions:
   name: 'coder'
   effects: '7'
   march_effects: '10'
-  code_effects: '1'
+  code_effects: '2'
 
 esphome:
   name: ${name}
@@ -131,6 +131,52 @@ light:
               duration: 100ms
             - state: false
               duration: 100ms
+
+
+      - strobe:
+          name: Smart Sync
+          colors:
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 1000ms
+
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 100ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 100ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 100ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 100ms
+
+            - state: false
+              duration: 10ms
+            - state: true
+              duration: 500ms
+
 
       - lambda:
           name: California Code
@@ -342,6 +388,9 @@ script:
               break;
             case 18:
               call.set_effect("Federal Signal Siren");
+              break;
+            case 19:
+              call.set_effect("Smart Sync");
               break;
             default:
               id(code).turn_on().set_effect("None").perform();
