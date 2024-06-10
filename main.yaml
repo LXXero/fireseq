@@ -2,6 +2,7 @@ substitutions:
   name: 'coder'
   effects: '7'
   march_effects: '10'
+  code_effects: '1'
 
 esphome:
   name: ${name}
@@ -244,6 +245,26 @@ light:
             if (state == 57)
               state = 0;
 
+
+      - lambda:
+          name: Federal Signal Siren
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state == 0 || state >12) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 24)
+              state = 0;
+
+
 globals:
  - id: active_effect
    type: int
@@ -319,6 +340,9 @@ script:
             case 17:
               call.set_effect("March 300 / Steady T4");
               break;
+            case 18:
+              call.set_effect("Federal Signal Siren");
+              break;
             default:
               id(code).turn_on().set_effect("None").perform();
               call.set_brightness(0);
@@ -340,7 +364,7 @@ binary_sensor:
     on_click:
       - lambda: !lambda |-
           id(active_effect) += 1;
-          if (id(active_effect) > ${effects}) {
+          if ((id(active_effect) < 0) || (id(active_effect) > ${effects})) {
               id(active_effect) = 0;
               id(set_effect)->execute(0);
           } else {
@@ -377,17 +401,15 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     name: "March Up"
-
     on_click:
       - lambda: !lambda |-
           id(active_effect) += 1;
-          if (id(active_effect) > ${effects} + ${march_effects}) {
+          if ((id(active_effect) <= ${effects}) || (id(active_effect) > ${effects} + ${march_effects})) {
               id(active_effect) = ${effects} + 1;
               id(set_effect)->execute(id(active_effect));
           } else {
               id(set_effect)->execute(id(active_effect));
           }
-
 
   - platform: gpio
     pin:
@@ -402,14 +424,12 @@ binary_sensor:
     on_click:
       - lambda: !lambda |-
           id(active_effect) -= 1;
-          if (id(active_effect) < ${effects} + 1) {
+          if ((id(active_effect) <= ${effects}) || (id(active_effect) > ${effects} + ${march_effects})) {
               id(active_effect) = ${effects} + ${march_effects};
               id(set_effect)->execute(id(active_effect));
-              ESP_LOGD("test", "${effects} + 1");
           } else {
               id(set_effect)->execute(id(active_effect));
           }
-
 
   - platform: gpio
     pin:
@@ -419,9 +439,16 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-
     name: "Code Up"
-
+    on_click:
+      - lambda: !lambda |-
+          id(active_effect) += 1;
+          if ((id(active_effect) <= ${effects} + ${march_effects}) || (id(active_effect) > ${effects} + ${march_effects} + ${code_effects})) {
+              id(active_effect) = ${effects} + ${march_effects} + 1;
+              id(set_effect)->execute(id(active_effect));
+          } else {
+              id(set_effect)->execute(id(active_effect));
+          }
 
   - platform: gpio
     pin:
@@ -433,6 +460,15 @@ binary_sensor:
       - delayed_on: 10ms
 
     name: "Code Down"
+    on_click:
+      - lambda: !lambda |-
+          id(active_effect) -= 1;
+          if ((id(active_effect) <= ${effects} + ${march_effects}) || (id(active_effect) > ${effects} + ${march_effects} + ${code_effects})) {
+              id(active_effect) = ${effects} + ${march_effects} + ${code_effects};
+              id(set_effect)->execute(id(active_effect));
+          } else {
+              id(set_effect)->execute(id(active_effect));
+          }
 
   - platform: gpio
     pin:
