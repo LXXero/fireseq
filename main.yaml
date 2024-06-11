@@ -146,44 +146,42 @@ light:
             - state: false
               duration: 10ms
             - state: true
-              duration: 1000ms
+              duration: 1025ms
 
             - state: false
               duration: 10ms
             - state: true
-              duration: 1000ms
+              duration: 1025ms
 
             - state: false
               duration: 10ms
             - state: true
-              duration: 1000ms
+              duration: 1025ms
 
 
             - state: false
               duration: 10ms
             - state: true
-              duration: 100ms
+              duration: 90ms
 
             - state: false
-              duration: 10ms
+              duration: 40ms
             - state: true
-              duration: 100ms
+              duration: 60ms
 
             - state: false
-              duration: 10ms
+              duration: 40ms
             - state: true
-              duration: 100ms
+              duration: 60ms
 
             - state: false
-              duration: 10ms
+              duration: 40ms
             - state: true
-              duration: 100ms
-
+              duration: 40ms
             - state: false
-              duration: 10ms
+              duration: 90ms
             - state: true
-              duration: 500ms
-
+              duration: 450ms
 
       - strobe:
           name: Smart Sync Silence
