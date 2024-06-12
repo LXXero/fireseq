@@ -1,7 +1,7 @@
 substitutions:
   name: 'coder'
   effects: '7'
-  march_effects: '11'
+  march_effects: '12'
   code_effects: '3'
 
 esphome:
@@ -131,6 +131,62 @@ light:
               duration: 100ms
             - state: false
               duration: 100ms
+
+      - strobe:
+          name: March 150 Fun
+          colors:
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+            - state: true
+              duration: 200ms
+            - state: false
+              duration: 200ms
+
+
+            - state: true
+              duration: 66ms
+            - state: false
+              duration: 66ms
+
+            - state: true
+              duration: 66ms
+            - state: false
+              duration: 66ms
+
+            - state: true
+              duration: 66ms
+            - state: false
+              duration: 66ms
+
+
 
       - strobe:
           name: Standard March
@@ -438,12 +494,15 @@ script:
               call.set_effect("Standard March");
               break;
             case 19:
-              call.set_effect("Federal Signal Siren");
+              call.set_effect("March 150 Fun");
               break;
             case 20:
-              call.set_effect("Smart Sync");
+              call.set_effect("Federal Signal Siren");
               break;
             case 21:
+              call.set_effect("Smart Sync");
+              break;
+            case 22:
               call.set_effect("Smart Sync Silence");
               break;
             default:
