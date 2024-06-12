@@ -12,11 +12,12 @@ esp32:
   #board: esp32dev
 
 i2c:
+  frequency: 800kHz
   sda: GPIO27
   scl: GPIO25
 
 font:
-  - file: 'arial.ttf'
+  - file: 'FreeSans.ttf'
     id: font1
     size: 14
 
@@ -27,7 +28,7 @@ display:
     lambda: |-
       it.print(0, 0, id(font1), "Fire Sequencer!");
       it.printf(0, 15, id(font1), "Shunt: %s", id(shunt).state ? "On" : "Off");
-      it.printf(0, 30, id(font1), "Code: %s",  id(code).get_effect_name() != "None" ? "On":   id(code).current_values.is_on() ? "On" : "Off" );
+      it.printf(0, 30, id(font1), "Code: %s",  id(code).get_effect_name() != "None" ? "On":  id(code).current_values.is_on() ? "On" : "Off" );
       it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str()  );
 
 button:
