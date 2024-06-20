@@ -2,9 +2,6 @@ substitutions:
   name: 'coder'
   ledpin: 'GPIO23'
   ledinvert: 'true'
-  effects: '7'
-  march_effects: '12'
-  code_effects: '4'
 
 esphome:
   name: ${name}
