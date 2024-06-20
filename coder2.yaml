@@ -1,4 +1,4 @@
-# 38pin devkit w/led pin set different to avoid messing w/debug logs
+# esp32 38pin devkit w/led pin set different to avoid messing w/debug logs
 
 substitutions:
   name: 'coder2'

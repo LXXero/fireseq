@@ -1,4 +1,4 @@
-# 38pin devkit w/L298 dual H bridge motor controller for smartsync inversions
+# esp32 38pin devkit w/L298 dual H bridge motor controller for smartsync inversions
 substitutions:
   name: 'coder1'
   ledpin: 'GPIO1'
