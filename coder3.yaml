@@ -1,0 +1,8 @@
+# esp32 relay x2 board config
+substitutions:
+  name: 'coder3'
+  ledpin: 'GPIO23'
+  ledinvert: 'true'
+  effects: '7'
+  march_effects: '12'
+  code_effects: '4'

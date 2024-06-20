@@ -1,0 +1,8 @@
+# 38pin devkit w/led pin set different to avoid messing w/debug logs
+
+substitutions:
+  name: 'coder2'
+  ledpin: 'GPIO23'
+  ledinvert: 'false'
+
+<<: !include main.yaml

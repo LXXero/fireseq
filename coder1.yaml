@@ -1,0 +1,8 @@
+# 38pin devkit w/L298 dual H bridge motor controller for smartsync inversions
+substitutions:
+  name: 'coder1'
+  ledpin: 'GPIO1'
+  ledinvert: 'false'
+
+
+<<: !include main.yaml
