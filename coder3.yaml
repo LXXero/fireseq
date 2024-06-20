@@ -6,3 +6,5 @@ substitutions:
   effects: '7'
   march_effects: '12'
   code_effects: '4'
+
+<<: !include main.yaml
