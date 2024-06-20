@@ -441,14 +441,6 @@ light:
               call.set_brightness(0);
             }
 
-            if (state >0 && state <9) {
-              id(shunt).turn_off();
-              id(reverse).turn_on();
-            } else {
-              id(shunt).turn_on();
-              id(reverse).turn_off();
-            }
-
             call.set_publish(false);
             call.perform();
             state += 1;
