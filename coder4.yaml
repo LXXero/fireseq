@@ -1,6 +1,6 @@
-# ESP32 Relay x2
+# AC/DC powered ESP32 Relay Board x4
 substitutions:
-  name: 'coder3'
+  name: 'coder4'
   gpio_code_up: 'GPIO22'
   gpio_code_down: 'GPIO14'
   gpio_fire_up: 'GPIO18'
@@ -9,12 +9,13 @@ substitutions:
   gpio_led_invert: 'true'
   gpio_march_up: 'GPIO26'
   gpio_march_down: 'GPIO4'
-  gpio_nac: 'GPIO33'
-  gpio_relay: 'GPIO16'
-  gpio_reverse: 'GPIO13'
-  gpio_scl: 'GPIO25'
-  gpio_sda: 'GPIO27'
-  gpio_shunt: 'GPIO17'
+  gpio_nac: 'GPIO27'
+  gpio_relay: 'GPIO32'
+  gpio_reverse: 'GPIO25'
+  gpio_sda: 'GPIO16'
+  gpio_scl: 'GPIO17'
+  gpio_shunt: 'GPIO33'
   gpio_toggle: 'GPIO19'
+
 
 <<: !include main.yaml

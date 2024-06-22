@@ -12,8 +12,8 @@ esp32:
 
 i2c:
   frequency: 800kHz
-  sda: GPIO27
-  scl: GPIO25
+  scl: ${gpio_scl}
+  sda: ${gpio_sda}
 
 font:
   - file: 'FreeSans.ttf'
@@ -37,36 +37,34 @@ button:
 
 output:
   - platform: gpio
-    pin: GPIO16
-    id: relaygpio
+    pin: ${gpio_relay}
+    id: gpio_relay
 
   - platform: gpio
-    pin: ${ledpin}
-    id: ledgpio
-    inverted: ${ledinvert}
-
-
+    pin: ${gpio_led}
+    id: gpio_led
+    inverted: ${gpio_led_invert}
 
 switch:
   - platform: gpio
-    pin: GPIO13
+    pin: ${gpio_reverse}
     id: reverse
     name: reverse
 
   - platform: gpio
-    pin: GPIO17
+    pin: ${gpio_shunt}
     id: shunt
     name: shunt
 
 light:
   - platform: binary
-    output: relaygpio
+    output: gpio_relay
     id: relay
     name: relay
     internal: true
 
   - platform: binary
-    output: ledgpio
+    output: gpio_led
     id: led
     name: led
     internal: true
@@ -346,7 +344,7 @@ light:
 
       - lambda:
           name: Firecom
-          update_interval: 2s
+          update_interval: 1500ms
           lambda: |-
             static int state = 0;
             if (initial_run) {
@@ -623,14 +621,14 @@ script:
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO18
+      number: ${gpio_fire_up}
       mode:
         input: true
         pulldown: true
     filters:
       - delayed_on: 10ms
 
-    name: "Up"
+    name: "Fire Up"
     on_click:
       - lambda: !lambda |-
           id(active_effect) += 1;
@@ -643,14 +641,14 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO21
+      number: ${gpio_fire_down}
       mode:
         input: true
         pulldown: true
     filters:
       - delayed_on: 10ms
 
-    name: "Down"
+    name: "Fire Down"
     on_click:
       - lambda: !lambda |-
           id(active_effect) -= 1;
@@ -664,7 +662,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO26
+      number: ${gpio_march_up}
       mode:
         input: true
         pulldown: true
@@ -683,7 +681,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO4
+      number: ${gpio_march_down}
       mode:
         input: true
         pulldown: true
@@ -703,7 +701,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO22
+      number: ${gpio_code_up}
       mode:
         input: true
         pulldown: true
@@ -722,7 +720,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO14
+      number: ${gpio_code_down}
       mode:
         input: true
         pulldown: true
@@ -742,14 +740,14 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO19
+      number: ${gpio_toggle}
       mode:
         input: true
         pulldown: true
     filters:
       - delayed_on: 10ms
 
-    name: "Shunt"
+    name: "Toggle"
     on_click:
       then:
         - if:
@@ -767,7 +765,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO33
+      number: ${gpio_nac}
       inverted: true
       mode:
         input: true
