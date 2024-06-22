@@ -282,50 +282,6 @@ light:
             if (state == 914)
               state = 0;
 
-
-      - strobe:
-          name: Smart Sync Old
-          colors:
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 1025ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 1025ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 1025ms
-
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 90ms
-
-            - state: false
-              duration: 40ms
-            - state: true
-              duration: 60ms
-
-            - state: false
-              duration: 40ms
-            - state: true
-              duration: 60ms
-
-            - state: false
-              duration: 40ms
-            - state: true
-              duration: 40ms
-            - state: false
-              duration: 90ms
-            - state: true
-              duration: 450ms
-
       - strobe:
           name: Smart Sync Old Silence
           colors:
@@ -386,6 +342,33 @@ light:
             state += 1;
             if (state == 30)
               state = 0;
+
+
+      - lambda:
+          name: Firecom
+          update_interval: 2s
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state % 2 == 0) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+
+            if (state <11 && state != 0) {
+              id(shunt).turn_off();
+            } else {
+              id(shunt).turn_on();
+            }
+
+            state += 1;
+            if (state == 20)
+              state = 0;
+
 
       - lambda:
           name: Pulsed California Code
@@ -534,7 +517,7 @@ globals:
    initial_value: '12'
  - id: code_effects
    type: int
-   initial_value: '4'
+   initial_value: '5'
 
 
 sensor:
@@ -626,6 +609,9 @@ script:
               break;
             case 23:
               call.set_effect("Fast Wail");
+              break;
+            case 24:
+              call.set_effect("Firecom");
               break;
             default:
               id(code).turn_on().set_effect("None").perform();
