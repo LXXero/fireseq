@@ -12,10 +12,9 @@ substitutions:
   gpio_nac: 'GPIO27'
   gpio_relay: 'GPIO32'
   gpio_reverse: 'GPIO25'
-  gpio_sda: 'GPIO16'
-  gpio_scl: 'GPIO17'
+  gpio_scl: 'GPIO16'
+  gpio_sda: 'GPIO17'
   gpio_shunt: 'GPIO33'
   gpio_toggle: 'GPIO19'
-
 
 <<: !include main.yaml

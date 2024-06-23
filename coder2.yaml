@@ -1,5 +1,4 @@
 # esp32 38pin devkit w/led pin set different to avoid messing w/debug logs
-
 substitutions:
   name: 'coder2'
   gpio_code_up: 'GPIO22'
