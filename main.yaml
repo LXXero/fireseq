@@ -1,8 +1,3 @@
-substitutions:
-  name: 'coder'
-  ledpin: 'GPIO23'
-  ledinvert: 'true'
-
 esphome:
   name: ${name}
 
@@ -351,7 +346,7 @@ light:
               state = 0;
             }
             auto call = id(code).turn_on();
-            if (state % 2 == 0) {
+            if (state % 2 == 0 && 1 == 2) {
               call.set_brightness(0);
             }
             call.set_publish(false);

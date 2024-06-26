@@ -7,7 +7,7 @@ substitutions:
   gpio_fire_down: 'GPIO21'
   gpio_led: 'GPIO23'
   gpio_led_invert: 'true'
-  gpio_march_up: 'GPIO26'
+  gpio_march_up: 'GPIO13'
   gpio_march_down: 'GPIO4'
   gpio_nac: 'GPIO27'
   gpio_relay: 'GPIO32'
