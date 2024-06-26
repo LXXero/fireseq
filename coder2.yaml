@@ -16,5 +16,6 @@ substitutions:
   gpio_sda: 'GPIO27'
   gpio_shunt: 'GPIO17'
   gpio_toggle: 'GPIO19'
+  gpio_trigger: 'GPIO32'
 
 <<: !include main.yaml
