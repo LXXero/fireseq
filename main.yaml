@@ -219,7 +219,7 @@ light:
               duration: 400ms
 
       - lambda:
-          name: Smart Sync
+          name: Shart Sync
           update_interval: 0ms
           lambda: |-
             static int state = 0;
@@ -248,6 +248,79 @@ light:
             state += 1;
             if (state == 448)
               state = 0;
+
+      - lambda:
+          name: Smart Sync
+          update_interval: 0ms
+          lambda: |-
+            static int state = 0;
+            static int inverse = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+
+
+            if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
+                  (state >= 343 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
+              call.set_brightness(0);
+              inverse = 1;
+            } else {
+              inverse = 0;
+            }
+
+            call.set_publish(false);
+            call.perform();
+
+            if (state >= 344 && state <= 348 ) {
+              id(shunt).turn_off();
+              id(reverse).turn_on();
+            } else {
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            state += 1;
+            if (state == 905)
+              state = 0;
+
+
+      - lambda:
+          name: Smart Sync March
+          update_interval: 0ms
+          lambda: |-
+            static int state = 0;
+            static int inverse = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+
+
+            if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
+                  (state >= 343 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
+              call.set_brightness(0);
+              inverse = 1;
+            } else {
+              inverse = 0;
+            }
+
+            call.set_publish(false);
+            call.perform();
+
+            if (state >= 341 && state <= 345 ) {
+              id(shunt).turn_off();
+              id(reverse).turn_on();
+            } else {
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            state += 1;
+            if (state == 905)
+              state = 0;
+
+
 
       - lambda:
           name: Smart Sync Silence
@@ -543,7 +616,7 @@ globals:
    initial_value: '12'
  - id: code_effects
    type: int
-   initial_value: '9'
+   initial_value: '11'
 
 
 sensor:
@@ -631,27 +704,33 @@ script:
               call.set_effect("Federal Signal Siren");
               break;
             case 21:
-              call.set_effect("Smart Sync");
+              call.set_effect("Shart Sync");
               break;
             case 22:
-              call.set_effect("Smart Sync Silence");
+              call.set_effect("Smart Sync");
               break;
             case 23:
-              call.set_effect("Fast Wail");
+              call.set_effect("Smart Sync March");
               break;
             case 24:
-              call.set_effect("Firecom");
+              call.set_effect("Smart Sync Silence");
               break;
             case 25:
-              call.set_effect("Firecom Chime");
+              call.set_effect("Fast Wail");
               break;
             case 26:
-              call.set_effect("Firecom Whoop");
+              call.set_effect("Firecom");
               break;
             case 27:
-              call.set_effect("Firecom Pulsed Tone");
+              call.set_effect("Firecom Chime");
               break;
             case 28:
+              call.set_effect("Firecom Whoop");
+              break;
+            case 29:
+              call.set_effect("Firecom Pulsed Tone");
+              break;
+            case 30:
               call.set_effect("Firecom Steady Tone");
               break;
             default:
