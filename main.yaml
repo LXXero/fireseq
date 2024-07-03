@@ -257,12 +257,14 @@ light:
             static int inverse = 0;
             if (initial_run) {
               state = 0;
+              id(shunt).turn_on();
+              id(reverse).turn_off();
             }
             auto call = id(code).turn_on();
 
 
             if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
-                  (state >= 343 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
+                  (state >= 345 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
               call.set_brightness(0);
               inverse = 1;
             } else {
@@ -293,12 +295,14 @@ light:
             static int inverse = 0;
             if (initial_run) {
               state = 0;
+              id(shunt).turn_on();
+              id(reverse).turn_off();
             }
             auto call = id(code).turn_on();
 
 
             if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
-                  (state >= 343 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
+                 (state >= 344 && state <= 348  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
               call.set_brightness(0);
               inverse = 1;
             } else {
@@ -308,7 +312,7 @@ light:
             call.set_publish(false);
             call.perform();
 
-            if (state >= 341 && state <= 345 ) {
+            if (state >= 344 && state <= 348 ) {
               id(shunt).turn_off();
               id(reverse).turn_on();
             } else {
@@ -565,6 +569,24 @@ light:
             if (state == 57)
               state = 0;
 
+      - lambda:
+          name: Temporal 2
+          update_interval: 115ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state != 1 && state != 3) {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 8)
+              state = 0;
+
 
       - lambda:
           name: Federal Signal Siren
@@ -610,7 +632,7 @@ globals:
    initial_value: '0'
  - id: effects
    type: int
-   initial_value: '7'
+   initial_value: '8'
  - id: march_effects
    type: int
    initial_value: '12'
@@ -647,90 +669,93 @@ script:
               call.set_effect("None");
               break;
             case 2:
-              call.set_effect("Temporal 3");
+              call.set_effect("Temporal 2");
               break;
             case 3:
-              call.set_effect("Temporal 4");
+              call.set_effect("Temporal 3");
               break;
             case 4:
-              call.set_effect("California Code");
+              call.set_effect("Temporal 4");
               break;
             case 5:
-              call.set_effect("Pulsed California Code");
+              call.set_effect("California Code");
               break;
             case 6:
-              call.set_effect("4-4");
+              call.set_effect("Pulsed California Code");
               break;
             case 7:
-              call.set_effect("4-4-4-4");
+              call.set_effect("4-4");
               break;
             case 8:
-              call.set_effect("March 20");
+              call.set_effect("4-4-4-4");
               break;
             case 9:
-              call.set_effect("March 30");
+              call.set_effect("March 20");
               break;
             case 10:
-              call.set_effect("March 60");
+              call.set_effect("March 30");
               break;
             case 11:
-              call.set_effect("March 90");
+              call.set_effect("March 60");
               break;
             case 12:
-              call.set_effect("March 120");
+              call.set_effect("March 90");
               break;
             case 13:
-              call.set_effect("March 150");
+              call.set_effect("March 120");
               break;
             case 14:
-              call.set_effect("March 180");
+              call.set_effect("March 150");
               break;
             case 15:
-              call.set_effect("March 200");
+              call.set_effect("March 180");
               break;
             case 16:
-              call.set_effect("March 250");
+              call.set_effect("March 200");
               break;
             case 17:
-              call.set_effect("March 300 / Steady T4");
+              call.set_effect("March 250");
               break;
             case 18:
-              call.set_effect("Standard March");
+              call.set_effect("March 300 / Steady T4");
               break;
             case 19:
-              call.set_effect("March 150 Fun");
+              call.set_effect("Standard March");
               break;
             case 20:
-              call.set_effect("Federal Signal Siren");
+              call.set_effect("March 150 Fun");
               break;
             case 21:
-              call.set_effect("Shart Sync");
+              call.set_effect("Federal Signal Siren");
               break;
             case 22:
-              call.set_effect("Smart Sync");
+              call.set_effect("Shart Sync");
               break;
             case 23:
-              call.set_effect("Smart Sync March");
+              call.set_effect("Smart Sync");
               break;
             case 24:
-              call.set_effect("Smart Sync Silence");
+              call.set_effect("Smart Sync March");
               break;
             case 25:
-              call.set_effect("Fast Wail");
+              call.set_effect("Smart Sync Silence");
               break;
             case 26:
-              call.set_effect("Firecom");
+              call.set_effect("Fast Wail");
               break;
             case 27:
-              call.set_effect("Firecom Chime");
+              call.set_effect("Firecom");
               break;
             case 28:
-              call.set_effect("Firecom Whoop");
+              call.set_effect("Firecom Chime");
               break;
             case 29:
-              call.set_effect("Firecom Pulsed Tone");
+              call.set_effect("Firecom Whoop");
               break;
             case 30:
+              call.set_effect("Firecom Pulsed Tone");
+              break;
+            case 31:
               call.set_effect("Firecom Steady Tone");
               break;
             default:
