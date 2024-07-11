@@ -1,5 +1,18 @@
 esphome:
   name: ${name}
+  on_boot:
+    priority: 600
+    then:
+      - delay: 10ms
+      - if:
+          condition:
+            - binary_sensor.is_on: nac_input
+          then:
+            - script.execute:
+                id: set_effect
+                number: !lambda |-
+                  return id(active_effect);
+            - switch.turn_on: shunt
 
 esp32:
   board: esp32doit-devkit-v1
@@ -887,6 +900,26 @@ binary_sensor:
 
   - platform: gpio
     pin:
+      number: ${gpio_mode_up}
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Mode Up"
+
+  - platform: gpio
+    pin:
+      number: ${gpio_mode_down}
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+
+    name: "Mode Down"
+
+  - platform: gpio
+    pin:
       number: ${gpio_toggle}
       mode:
         input: true
@@ -913,13 +946,14 @@ binary_sensor:
   - platform: gpio
     pin:
       number: ${gpio_nac}
-      inverted: true
+      inverted: ${gpio_nac_invert}
       mode:
         input: true
         pulldown: true
     filters:
       - delayed_on: 10ms
-
+      - delayed_off: 100ms
+    id: nac_input
     name: "NAC Input"
     on_press:
       - script.execute:
@@ -930,7 +964,6 @@ binary_sensor:
     on_release:
       - light.turn_off: code
       - switch.turn_off: shunt
-
 
 # Enable logging
 #logger:
