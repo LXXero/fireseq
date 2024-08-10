@@ -1,9 +1,9 @@
 esphome:
   name: ${name}
   on_boot:
-    priority: 600
+    priority: 500
     then:
-      - delay: 10ms
+      - delay: 66ms
       - if:
           condition:
             - binary_sensor.is_on: nac_input
@@ -120,6 +120,16 @@ light:
               duration: 333ms
             - state: false
               duration: 333ms
+
+
+      - strobe:
+          name: March 100
+          colors:
+            - state: true
+              duration: 300ms
+            - state: false
+              duration: 300ms
+
 
       - strobe:
           name: March 120
@@ -648,7 +658,7 @@ globals:
    initial_value: '8'
  - id: march_effects
    type: int
-   initial_value: '12'
+   initial_value: '13'
  - id: code_effects
    type: int
    initial_value: '11'
@@ -715,60 +725,63 @@ script:
               call.set_effect("March 90");
               break;
             case 13:
-              call.set_effect("March 120");
+              call.set_effect("March 100");
               break;
             case 14:
-              call.set_effect("March 150");
+              call.set_effect("March 120");
               break;
             case 15:
-              call.set_effect("March 180");
+              call.set_effect("March 150");
               break;
             case 16:
-              call.set_effect("March 200");
+              call.set_effect("March 180");
               break;
             case 17:
-              call.set_effect("March 250");
+              call.set_effect("March 200");
               break;
             case 18:
-              call.set_effect("March 300 / Steady T4");
+              call.set_effect("March 250");
               break;
             case 19:
-              call.set_effect("Standard March");
+              call.set_effect("March 300 / Steady T4");
               break;
             case 20:
-              call.set_effect("March 150 Fun");
+              call.set_effect("Standard March");
               break;
             case 21:
-              call.set_effect("Federal Signal Siren");
+              call.set_effect("March 150 Fun");
               break;
             case 22:
-              call.set_effect("Shart Sync");
+              call.set_effect("Federal Signal Siren");
               break;
             case 23:
-              call.set_effect("Smart Sync");
+              call.set_effect("Shart Sync");
               break;
             case 24:
-              call.set_effect("Smart Sync March");
+              call.set_effect("Smart Sync");
               break;
             case 25:
-              call.set_effect("Smart Sync Silence");
+              call.set_effect("Smart Sync March");
               break;
             case 26:
-              call.set_effect("Fast Wail");
+              call.set_effect("Smart Sync Silence");
               break;
             case 27:
-              call.set_effect("Firecom");
+              call.set_effect("Fast Wail");
               break;
             case 28:
-              call.set_effect("Firecom Chime");
+              call.set_effect("Firecom");
               break;
             case 29:
-              call.set_effect("Firecom Whoop");
+              call.set_effect("Firecom Chime");
               break;
             case 30:
-              call.set_effect("Firecom Pulsed Tone");
+              call.set_effect("Firecom Whoop");
               break;
             case 31:
+              call.set_effect("Firecom Pulsed Tone");
+              break;
+            case 32:
               call.set_effect("Firecom Steady Tone");
               break;
             default:
@@ -976,7 +989,8 @@ api:
     key: !secret api_key
 
 ota:
-  password: !secret ota_password
+  - platform: esphome
+    password: !secret ota_password
 
 wifi:
   reboot_timeout: 0s
