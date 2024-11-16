@@ -1,6 +1,7 @@
 # AC/DC powered ESP32 Relay Board x4
 substitutions:
   name: 'coderdoorbell'
+  gpio_code: 'GPIO32'
   gpio_code_up: 'GPIO22'
   gpio_code_down: 'GPIO14'
   gpio_fire_up: 'GPIO18'
@@ -13,7 +14,6 @@ substitutions:
   gpio_mode_down: 'GPIO35'
   gpio_nac: 'GPIO27'
   gpio_nac_invert: 'false'
-  gpio_relay: 'GPIO32'
   gpio_reverse: 'GPIO25'
   gpio_scl: 'GPIO16'
   gpio_sda: 'GPIO17'

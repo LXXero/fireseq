@@ -45,8 +45,8 @@ button:
 
 output:
   - platform: gpio
-    pin: ${gpio_relay}
-    id: gpio_relay
+    pin: ${gpio_code}
+    id: gpio_code
 
   - platform: gpio
     pin: ${gpio_led}
@@ -71,7 +71,7 @@ switch:
 
 light:
   - platform: binary
-    output: gpio_relay
+    output: gpio_code
     id: relay
     name: relay
     internal: true
