@@ -647,6 +647,84 @@ light:
             if (state == 8)
               state = 0;
 
+      - lambda:
+          name: Westminster
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state == 1 || state == 14) {
+              call.set_brightness(100);
+            } else {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+
+            if (state == 3 || state == 16) {
+              id(reverse).turn_on();
+            } else {
+              id(reverse).turn_off();
+            }
+
+            if (state == 5 || state == 12) {
+              id(shunt).turn_on();
+            } else {
+              id(shunt).turn_off();
+            }
+
+            if (state == 7 || state == 10) {
+              id(trigger).turn_on();
+            } else {
+              id(trigger).turn_off();
+            }
+
+
+            state += 1;
+            if (state == 20)
+              state = 0;
+
+      - lambda:
+          name: Westminster 12
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state == 1 || state == 14 ||  (state >= 20 && state < 44 && state % 2 == 0) ) {
+              call.set_brightness(100);
+            } else {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+
+            if (state == 3 || state == 16 || (state >= 20 && state < 44 && state % 2 == 0) ) {
+              id(reverse).turn_on();
+            } else {
+              id(reverse).turn_off();
+            }
+
+            if (state == 5 || state == 12 || (state >= 20 && state < 44 && state % 2 == 0) )  {
+              id(shunt).turn_on();
+            } else {
+              id(shunt).turn_off();
+            }
+
+            if (state == 7 || state == 10 || (state >= 20 && state < 44 && state % 2 == 0) ) {
+              id(trigger).turn_on();
+            } else {
+              id(trigger).turn_off();
+            }
+
+            state += 1;
+            if (state == 46)
+              state = 0;
 
 globals:
  - id: active_effect
@@ -661,7 +739,7 @@ globals:
    initial_value: '13'
  - id: code_effects
    type: int
-   initial_value: '11'
+   initial_value: '13'
 
 
 sensor:
@@ -783,6 +861,12 @@ script:
               break;
             case 32:
               call.set_effect("Firecom Steady Tone");
+              break;
+            case 33:
+              call.set_effect("Westminster");
+              break;
+            case 34:
+              call.set_effect("Westminster 12");
               break;
             default:
               id(code).turn_on().set_effect("None").perform();
