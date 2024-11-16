@@ -682,7 +682,6 @@ light:
               id(trigger).turn_off();
             }
 
-
             state += 1;
             if (state == 20)
               state = 0;
@@ -696,7 +695,7 @@ light:
               state = 0;
             }
             auto call = id(code).turn_on();
-            if (state == 1 || state == 14 ||  (state >= 20 && state < 44 && state % 2 == 0) ) {
+            if (state == 1 || state == 14 || (state >= 20 && state < 44 && state % 2 == 0) ) {
               call.set_brightness(100);
             } else {
               call.set_brightness(0);
