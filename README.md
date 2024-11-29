@@ -22,8 +22,8 @@ The fire sequencer has 3 sections of codes, which are accessed by 3 pairs of up/
 
 
 ## Inputs/Outputs
-- Zone input (Optocoupler)
-  - gpio_nac_invert is typically set to true when using an optocoupler, and false otherwise.
+- Zone input (Optocoupler/Pulldown)
+  - gpio_zone_invert is typically set to true when using an optocoupler, and false otherwise.
 - Code output (Relay/FET)
 - Shunt output (Relay/FET)
 - Reverse output (Relay/FET)

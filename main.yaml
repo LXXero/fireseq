@@ -6,7 +6,7 @@ esphome:
       - delay: 66ms
       - if:
           condition:
-            - binary_sensor.is_on: nac_input
+            - binary_sensor.is_on: zone_input
           then:
             - script.execute:
                 id: set_effect
@@ -85,6 +85,15 @@ light:
   - platform: partition
     id: code
     name: code
+    on_state:
+      then:
+        - if:
+            condition:
+                - light.is_off: code
+            then:
+              - switch.turn_off: shunt
+              - switch.turn_off: reverse
+              - switch.turn_off: trigger
     segments:
       - single_light_id: relay
       - single_light_id: led
@@ -648,6 +657,84 @@ light:
               state = 0;
 
       - lambda:
+          name: Westminster 16 Note
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state == 3 || state == 14 || state == 19 || state == 32) {
+              call.set_brightness(100);
+            } else {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+
+            if (state == 1 || state == 10 || state == 16 || state == 21 || state == 34) {
+              id(reverse).turn_on();
+            } else {
+              id(reverse).turn_off();
+            }
+
+            if (state == 5 || state == 12 || state == 23 || state == 30) {
+              id(shunt).turn_on();
+            } else {
+              id(shunt).turn_off();
+            }
+
+            if (state == 7 || state == 25 || state == 28) {
+              id(trigger).turn_on();
+            } else {
+              id(trigger).turn_off();
+            }
+
+            state += 1;
+            if (state == 38)
+              state = 0;
+
+      - lambda:
+          name: Westminster 16 Note 12
+          update_interval: 500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state == 3 || state == 14 || state == 19 || state == 32 || (state >= 38 && state < 62 && state % 2 == 0)) {
+              call.set_brightness(100);
+            } else {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+
+            if (state == 1 || state == 10 || state == 16 || state == 21 || state == 34 || (state >= 38 && state < 62 && state % 2 == 0)) {
+              id(reverse).turn_on();
+            } else {
+              id(reverse).turn_off();
+            }
+
+            if (state == 5 || state == 12 || state == 23 || state == 30 || (state >= 38 && state < 62 && state % 2 == 0)) {
+              id(shunt).turn_on();
+            } else {
+              id(shunt).turn_off();
+            }
+
+            if (state == 7 || state == 25 || state == 28 || (state >= 38 && state < 62 && state % 2 == 0)) {
+              id(trigger).turn_on();
+            } else {
+              id(trigger).turn_off();
+            }
+
+            state += 1;
+            if (state == 66)
+              state = 0;
+
+      - lambda:
           name: Westminster
           update_interval: 500ms
           lambda: |-
@@ -725,6 +812,45 @@ light:
             if (state == 46)
               state = 0;
 
+      - lambda:
+          name: Turkey
+          update_interval: 250ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state == 1 || state == 23 || state == 25 || state == 27 || state == 33) {
+              call.set_brightness(100);
+            } else {
+              call.set_brightness(0);
+            }
+            call.set_publish(false);
+            call.perform();
+
+            if (state == 5 || state == 7 || state == 9 || state == 19 || state == 29) {
+              id(reverse).turn_on();
+            } else {
+              id(reverse).turn_off();
+            }
+
+            if (state == 3 || state == 21 || state == 31 || state == 35 || state == 37) {
+              id(shunt).turn_on();
+            } else {
+              id(shunt).turn_off();
+            }
+
+            if (state == 11 || state == 13 || state == 15 || state == 17) {
+              id(trigger).turn_on();
+            } else {
+              id(trigger).turn_off();
+            }
+
+            state += 1;
+            if (state == 38)
+              state = 0;
+
 globals:
  - id: active_effect
    type: int
@@ -738,7 +864,7 @@ globals:
    initial_value: '13'
  - id: code_effects
    type: int
-   initial_value: '13'
+   initial_value: '16'
 
 
 sensor:
@@ -866,6 +992,15 @@ script:
               break;
             case 34:
               call.set_effect("Westminster 12");
+              break;
+            case 35:
+              call.set_effect("Westminster 16 Note");
+              break;
+            case 36:
+              call.set_effect("Westminster 16 Note 12");
+              break;
+            case 37:
+              call.set_effect("Turkey");
               break;
             default:
               id(code).turn_on().set_effect("None").perform();
@@ -1031,7 +1166,6 @@ binary_sensor:
                 - switch.is_on: shunt
             then:
               - light.turn_off: code
-              - switch.turn_off: shunt
             else:
               - script.execute:
                   id: set_effect
@@ -1041,16 +1175,16 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: ${gpio_nac}
-      inverted: ${gpio_nac_invert}
+      number: ${gpio_zone}
+      inverted: ${gpio_zone_invert}
       mode:
         input: true
         pulldown: true
     filters:
       - delayed_on: 10ms
       - delayed_off: 100ms
-    id: nac_input
-    name: "NAC Input"
+    id: zone_input
+    name: "Zone Input"
     on_press:
       - script.execute:
           id: set_effect
@@ -1059,11 +1193,10 @@ binary_sensor:
       - switch.turn_on: shunt
     on_release:
       - light.turn_off: code
-      - switch.turn_off: shunt
 
 # Enable logging
 #logger:
-  #  level: VERBOSE
+#    level: VERBOSE
 
 # Enable Home Assistant API
 api:
