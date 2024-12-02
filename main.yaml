@@ -110,23 +110,38 @@ light:
     on_state:
       - if:
           condition:
-              - light.is_off: code
+             - lambda: 'return id(code).get_effect_name() == "None" && ! id(code).current_values.is_on();'
           then:
             - switch.turn_off: shunt
             - switch.turn_off: reverse
             - switch.turn_off: trigger
-      - delay: 2500ms
+      - delay: 10ms
       - if:
           condition:
             - lambda: 'return id(code).get_effect_name() == "None" && id(code).current_values.is_on();'
           then:
-            - delay: 2500ms
+            - delay: 5000ms
             - light.turn_off: code
 
     segments:
       - single_light_id: relay
       - single_light_id: led
     effects:
+      - lambda:
+          name: 'On'
+          update_interval: 250ms
+          lambda: ''
+
+      - lambda:
+          name: 'Off'
+          update_interval: 250ms
+          lambda: |-
+            auto call = id(code).turn_on();
+            id(code).turn_on().set_effect("Off").set_publish(false).perform();
+            call.set_brightness(0);
+            call.set_publish(false);
+            call.perform();
+
       - strobe:
           name: March 20
           colors:
@@ -1023,7 +1038,7 @@ script:
           bool not_found = find(list.begin(), list.end(), id(effect)) == list.end();
 
           std::string next_effect;
-          if (mode == "down" && (mapback[id(effect)] - 1 < 1 || not_found)) {
+          if (mode == "down" && (mapback[id(effect)] - 1 < 0 || not_found)) {
             next_effect = map[list.size() - 1];
           } else if (mode == "down") {
             next_effect = map[mapback[id(effect)] - 1];
@@ -1038,14 +1053,7 @@ script:
           ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), list.size(), not_found ? "not found" : "found", next_effect.c_str());
 
           auto call = id(code).turn_on();
-          if (next_effect == "Off") {
-            id(code).turn_on().set_effect("None").perform();
-            call.set_brightness(0);
-          } else if (next_effect == "On") {
-            call.set_effect("None");
-          } else {
-            call.set_effect(next_effect);
-          }
+          call.set_effect(next_effect);
           call.perform();
           id(effect) = next_effect;
 
@@ -1209,8 +1217,8 @@ binary_sensor:
               mode: up
 
 # Enable logging
-#logger:
-#    level: VERBOSE
+logger:
+    level: VERBOSE
 
 # Enable Home Assistant API
 api:
