@@ -995,6 +995,9 @@ script:
       mode: std::string
     then:
       - lambda: |-
+          id(reverse).turn_off();
+          id(trigger).turn_off();
+
           std::vector<std::string> list;
 
           if (type == "fire") {
@@ -1206,8 +1209,8 @@ binary_sensor:
               mode: up
 
 # Enable logging
-logger:
-    level: VERBOSE
+#logger:
+#    level: VERBOSE
 
 # Enable Home Assistant API
 api:
