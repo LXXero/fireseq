@@ -39,9 +39,95 @@ display:
       it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str());
 
 button:
-- platform: safe_mode
-  name: Safe Mode Boot
-  entity_category: diagnostic
+  - platform: safe_mode
+    name: Safe Mode Boot
+    entity_category: diagnostic
+
+  - name: Toggle
+    id: toggle
+    platform: template
+    on_press:
+      - if:
+          condition:
+            - switch.is_on: shunt
+          then:
+            - light.turn_off: code
+          else:
+            - script.execute:
+                id: set_effect
+                type: restore
+                mode: restore
+            - switch.turn_on: shunt
+
+  - name: Doorbell
+    id: doorbell
+    platform: template
+    on_press:
+      - if:
+          condition:
+            - switch.is_on: shunt
+          then:
+            - light.turn_off: code
+          else:
+            - script.execute:
+                id: set_effect
+                type: doorbell
+                mode: up
+            - switch.turn_on: shunt
+
+  - name: "Fire Up"
+    id: fire_up
+    platform: template
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: fire
+
+  - name: "Fire Down"
+    id: fire_down
+    platform: template
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: fire
+
+  - name: "March Up"
+    id: march_up
+    platform: template
+    on_press:
+      - script.execute:
+          id: set_effect
+          type: march
+          mode: up
+
+  - name: "March Down"
+    id: march_down
+    platform: template
+    on_press:
+      - script.execute:
+          id: set_effect
+          type: march
+          mode: down
+
+  - name: "Code Up"
+    id: code_up
+    platform: template
+    on_press:
+      - script.execute:
+          id: set_effect
+          type: code
+          mode: up
+
+  - name: "Code Down"
+    id: code_down
+    platform: template
+    on_press:
+      - script.execute:
+          id: set_effect
+          type: code
+          mode: down
 
 output:
   - platform: gpio
@@ -1075,97 +1161,7 @@ script:
           id(effect) = next_id;
 
 binary_sensor:
-  - name: "Fire Up"
-    platform: gpio
-    pin:
-      number: ${gpio_fire_up}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: fire
-
-  - name: "Fire Down"
-    platform: gpio
-    pin:
-      number: ${gpio_fire_down}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: down
-          type: fire
-
-  - name: "March Up"
-    platform: gpio
-    pin:
-      number: ${gpio_march_up}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          type: march
-          mode: up
-
-  - name: "March Down"
-    platform: gpio
-    pin:
-      number: ${gpio_march_down}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-    - script.execute:
-        id: set_effect
-        type: march
-        mode: down
-
-  - name: "Code Up"
-    platform: gpio
-    pin:
-      number: ${gpio_code_up}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-    - script.execute:
-        id: set_effect
-        type: code
-        mode: up
-
-  - name: "Code Down"
-    platform: gpio
-    pin:
-      number: ${gpio_code_down}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-    - script.execute:
-        id: set_effect
-        type: code
-        mode: down
-
-  - name: "Toggle"
+  - name: Toggle
     platform: gpio
     pin:
       number: ${gpio_toggle}
@@ -1175,20 +1171,22 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      then:
-        - if:
-            condition:
-                - switch.is_on: shunt
-            then:
-              - light.turn_off: code
-            else:
-              - script.execute:
-                  id: set_effect
-                  type: restore
-                  mode: restore
-              - switch.turn_on: shunt
+      - button.press: toggle
 
-  - name: "Zone Input"
+  - name: Doorbell
+    platform: gpio
+    pin:
+      number: ${gpio_doorbell}
+      inverted: false
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 100ms
+    on_press:
+      - button.press: doorbell
+
+  - name: Zone Input
     id: zone_input
     platform: gpio
     pin:
@@ -1209,26 +1207,77 @@ binary_sensor:
     on_release:
       - light.turn_off: code
 
-  - id: doorbell_input
-    name: "Doorbell Input"
+  - name: Fire Up
     platform: gpio
     pin:
-      number: ${gpio_doorbell}
-      inverted: false
+      number: ${gpio_fire_up}
       mode:
         input: true
+        pulldown: true
     filters:
       - delayed_on: 10ms
-      - delayed_off: 100ms
-    on_press:
-      - if:
-          condition:
-            lambda: 'return id(code).get_effect_name() == "None" && ! id(code).current_values.is_on();'
-          then:
-            script.execute:
-              id: set_effect
-              type: doorbell
-              mode: up
+    on_click:
+      - button.press: fire_up
+
+  - name: Fire Down
+    platform: gpio
+    pin:
+      number: ${gpio_fire_down}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - button.press: fire_down
+
+  - name: March Up
+    platform: gpio
+    pin:
+      number: ${gpio_march_up}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - button.press: march_up
+
+  - name: March Down
+    platform: gpio
+    pin:
+      number: ${gpio_march_down}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - button.press: march_down
+
+  - name: Code Up
+    platform: gpio
+    pin:
+      number: ${gpio_code_up}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - button.press: code_up
+
+  - name: Code Down
+    platform: gpio
+    pin:
+      number: ${gpio_code_down}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - button.press: code_down
 
 # Enable logging
 logger:
