@@ -24,6 +24,9 @@ The fire sequencer has 3 sections of codes, which are accessed by 3 pairs of up/
 ## Inputs/Outputs
 - Zone input (Optocoupler/Pulldown)
   - gpio_zone_invert is typically set to true when using an optocoupler, and false otherwise.
+- Doorbell Input (Pulldown, Relay Activated)
+  - cycles through a dedicated list of "doorbell" codes upon each button press
+  - can be attached to external relay for activation w/smart doorbells, etc
 - Code output (Relay/FET)
 - Shunt output (Relay/FET)
 - Reverse output (Relay/FET)
