@@ -36,7 +36,7 @@ display:
       it.print(0, 0, id(font1), "Fire Sequencer!");
       it.printf(0, 15, id(font1), "Shunt: %s", id(shunt).state ? "On" : "Off");
       it.printf(0, 30, id(font1), "Code: %s",  id(code).get_effect_name() != "None" ? "On":  id(code).current_values.is_on() ? "On" : "Off" );
-      it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str()  );
+      it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str());
 
 button:
 - platform: safe_mode
@@ -929,15 +929,20 @@ light:
               offcall.perform();
 
 globals:
- - id: effect
-   type: std::string
+ - id: effect_type
+   type: short
    restore_value: yes
-   initial_value: '"Off"'
+   initial_value: '0'
+
+
+ - id: effect
+   type: short
+   restore_value: yes
+   initial_value: '0'
 
  - id: fire_effects
    type: std::vector<std::string>
    initial_value: '{
-     "Off",
      "On",
      "Temporal 2",
      "Temporal 3",
@@ -945,7 +950,8 @@ globals:
      "California Code",
      "Pulsed California Code",
      "4-4",
-     "4-4-4-4"
+     "4-4-4-4",
+     "Off"
    }'
 
  - id: march_effects
@@ -1014,51 +1020,63 @@ script:
           id(trigger).turn_off();
 
           std::vector<std::string> list;
+          int type_id;
 
-          if (type == "fire") {
+          if (type == "fire" || (type == "restore" && id(effect_type) == 0)) {
             list = id(fire_effects);
-          } else if (type == "march") {
+            type_id = 0;
+          } else if (type == "march" || (type == "restore" && id(effect_type) == 1)) {
             list = id(march_effects);
-          } else if (type == "code") {
+            type_id = 1;
+          } else if (type == "code" || (type == "restore" && id(effect_type) == 2))  {
             list = id(code_effects);
-          } else if (type == "doorbell") {
+            type_id = 2;
+          } else if (type == "doorbell" || (type == "restore" && id(effect_type) == 3)) {
             list = id(doorbell_effects);
+            type_id = 3;
           }
 
           int key = 0;
           std::map<int, std::string> map;
-          std::map<std::string, int> mapback;
 
           for ( auto value : list ) {
               map[key] = value;
-              mapback[value] = key;
               key += 1;
            }
 
-          bool not_found = find(list.begin(), list.end(), id(effect)) == list.end();
+          int next_id;;
+          bool not_found;
 
-          std::string next_effect;
-          if (mode == "down" && (mapback[id(effect)] - 1 < 0 || not_found)) {
-            next_effect = map[list.size() - 1];
-          } else if (mode == "down") {
-            next_effect = map[mapback[id(effect)] - 1];
-          } else if (mode == "up" && (mapback[id(effect)] + 1 >= list.size() || not_found)) {
-            next_effect = map[0];
-          } else if (mode == "up") {
-            next_effect = map[mapback[id(effect)] + 1];
+          if (id(effect_type) == type_id) {
+            not_found = find(list.begin(), list.end(), map[id(effect)]) == list.end();
           } else {
-            next_effect = id(effect);
+            not_found = true;
           }
 
+          if (mode == "down" && (not_found || id(effect) - 1 < 0)) {
+            next_id = list.size() - 1;
+          } else if (mode == "down") {
+            next_id = id(effect) - 1;
+          } else if (mode == "up" && (not_found || id(effect) + 1 >= list.size())) {
+            next_id = 0;
+          } else if (mode == "up") {
+            next_id = id(effect) + 1;
+          } else {
+            next_id = id(effect);
+          }
+
+          std::string next_effect = map[next_id];
           ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), list.size(), not_found ? "not found" : "found", next_effect.c_str());
 
           auto call = id(code).turn_on();
           call.set_effect(next_effect);
           call.perform();
-          id(effect) = next_effect;
+          id(effect_type) = type_id;
+          id(effect) = next_id;
 
 binary_sensor:
-  - platform: gpio
+  - name: "Fire Up"
+    platform: gpio
     pin:
       number: ${gpio_fire_up}
       mode:
@@ -1066,14 +1084,14 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-    name: "Fire Up"
     on_click:
       - script.execute:
           id: set_effect
           mode: up
           type: fire
 
-  - platform: gpio
+  - name: "Fire Down"
+    platform: gpio
     pin:
       number: ${gpio_fire_down}
       mode:
@@ -1081,14 +1099,14 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-    name: "Fire Down"
     on_click:
       - script.execute:
           id: set_effect
           mode: down
           type: fire
 
-  - platform: gpio
+  - name: "March Up"
+    platform: gpio
     pin:
       number: ${gpio_march_up}
       mode:
@@ -1096,14 +1114,14 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-    name: "March Up"
     on_click:
       - script.execute:
           id: set_effect
           type: march
           mode: up
 
-  - platform: gpio
+  - name: "March Down"
+    platform: gpio
     pin:
       number: ${gpio_march_down}
       mode:
@@ -1111,15 +1129,14 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-
-    name: "March Down"
     on_click:
     - script.execute:
         id: set_effect
         type: march
         mode: down
 
-  - platform: gpio
+  - name: "Code Up"
+    platform: gpio
     pin:
       number: ${gpio_code_up}
       mode:
@@ -1127,14 +1144,14 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-    name: "Code Up"
     on_click:
     - script.execute:
         id: set_effect
         type: code
         mode: up
 
-  - platform: gpio
+  - name: "Code Down"
+    platform: gpio
     pin:
       number: ${gpio_code_down}
       mode:
@@ -1142,15 +1159,14 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-
-    name: "Code Down"
     on_click:
     - script.execute:
         id: set_effect
         type: code
         mode: down
 
-  - platform: gpio
+  - name: "Toggle"
+    platform: gpio
     pin:
       number: ${gpio_toggle}
       mode:
@@ -1158,8 +1174,6 @@ binary_sensor:
         pulldown: true
     filters:
       - delayed_on: 10ms
-
-    name: "Toggle"
     on_click:
       then:
         - if:
@@ -1174,7 +1188,9 @@ binary_sensor:
                   mode: restore
               - switch.turn_on: shunt
 
-  - platform: gpio
+  - name: "Zone Input"
+    id: zone_input
+    platform: gpio
     pin:
       number: ${gpio_zone}
       inverted: ${gpio_zone_invert}
@@ -1184,8 +1200,6 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
       - delayed_off: 100ms
-    id: zone_input
-    name: "Zone Input"
     on_press:
       - script.execute:
           id: set_effect
@@ -1195,7 +1209,9 @@ binary_sensor:
     on_release:
       - light.turn_off: code
 
-  - platform: gpio
+  - id: doorbell_input
+    name: "Doorbell Input"
+    platform: gpio
     pin:
       number: ${gpio_doorbell}
       inverted: false
@@ -1204,8 +1220,6 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
       - delayed_off: 100ms
-    id: doorbell_input
-    name: "Doorbell Input"
     on_press:
       - if:
           condition:
