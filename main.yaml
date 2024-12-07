@@ -11,13 +11,13 @@ esphome:
             - script.execute:
                 id: set_effect
                 type: restore
-                mode: restore
+                mode: set
             - switch.turn_on: shunt
           else:
             - script.execute:
                 id: set_effect
                 type: restore
-                mode: set
+                mode: restore
 
 esp32:
   board: esp32doit-devkit-v1
@@ -74,7 +74,7 @@ button:
             - script.execute:
                 id: set_effect
                 type: restore
-                mode: restore
+                mode: set
             - switch.turn_on: shunt
 
   - name: Doorbell
@@ -1167,7 +1167,7 @@ script:
           std::string next_effect = map[next_id];
           ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), effect_map.list.size(), not_found ? "not found" : "found", next_effect.c_str());
 
-          if (mode != "set") {
+          if (mode != "restore") {
             auto call = id(code).turn_on();
             call.set_effect(next_effect);
             call.perform();
@@ -1221,7 +1221,7 @@ binary_sensor:
       - script.execute:
           id: set_effect
           type: restore
-          mode: restore
+          mode: set
       - switch.turn_on: shunt
     on_release:
       - light.turn_off: code
