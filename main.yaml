@@ -13,6 +13,11 @@ esphome:
                 type: restore
                 mode: restore
             - switch.turn_on: shunt
+          else:
+            - script.execute:
+                id: set_effect
+                type: restore
+                mode: set
 
 esp32:
   board: esp32doit-devkit-v1
@@ -27,6 +32,19 @@ font:
   - file: 'FreeSans.ttf'
     id: font1
     size: 14
+
+text_sensor:
+  - platform: template
+    name: "Current Effect"
+    id: "current_effect"
+
+  - platform: template
+    name: "Set Effect"
+    id: status_effect
+
+  - platform: template
+    name: "Set Effect Type"
+    id: status_effect_type
 
 display:
   - platform: ssd1306_i2c
@@ -193,6 +211,10 @@ light:
     id: code
     name: code
     on_state:
+      - text_sensor.template.publish:
+          id: current_effect
+          state: !lambda 'return id(code).get_effect_name();'
+
       - if:
           condition:
              - lambda: 'return id(code).get_effect_name() == "None" && ! id(code).current_values.is_on();'
@@ -1091,27 +1113,32 @@ script:
           id(reverse).turn_off();
           id(trigger).turn_off();
 
-          std::vector<std::string> list;
-          int type_id;
+          struct effects {
+            int id;
+            std::string type;
+            std::vector<std::string> list;
+          };
 
-          if (type == "fire" || (type == "restore" && id(effect_type) == 0)) {
-            list = id(fire_effects);
-            type_id = 0;
-          } else if (type == "march" || (type == "restore" && id(effect_type) == 1)) {
-            list = id(march_effects);
-            type_id = 1;
-          } else if (type == "code" || (type == "restore" && id(effect_type) == 2))  {
-            list = id(code_effects);
-            type_id = 2;
-          } else if (type == "doorbell" || (type == "restore" && id(effect_type) == 3)) {
-            list = id(doorbell_effects);
-            type_id = 3;
+          effects effects_map[] {
+            { 0, "fire", id(fire_effects) },
+            { 1, "march", id(march_effects) },
+            { 2, "code", id(code_effects) },
+            { 3, "doorbell", id(doorbell_effects) }
+          };
+
+          effects effect_map;
+
+          for ( auto value : effects_map ){
+            if (type == value.type || (type == "restore" && id(effect_type) == value.id )) {
+              effect_map = value;
+              break;
+            }
           }
 
           int key = 0;
           std::map<int, std::string> map;
 
-          for ( auto value : list ) {
+          for ( auto value : effect_map.list ) {
               map[key] = value;
               key += 1;
            }
@@ -1119,17 +1146,17 @@ script:
           int next_id;;
           bool not_found;
 
-          if (id(effect_type) == type_id) {
-            not_found = find(list.begin(), list.end(), map[id(effect)]) == list.end();
+          if (id(effect_type) == effect_map.id) {
+            not_found = find(effect_map.list.begin(), effect_map.list.end(), map[id(effect)]) == effect_map.list.end();
           } else {
             not_found = true;
           }
 
           if (mode == "down" && (not_found || id(effect) - 1 < 0)) {
-            next_id = list.size() - 1;
+            next_id = effect_map.list.size() - 1;
           } else if (mode == "down") {
             next_id = id(effect) - 1;
-          } else if (mode == "up" && (not_found || id(effect) + 1 >= list.size())) {
+          } else if (mode == "up" && (not_found || id(effect) + 1 >= effect_map.list.size())) {
             next_id = 0;
           } else if (mode == "up") {
             next_id = id(effect) + 1;
@@ -1138,13 +1165,19 @@ script:
           }
 
           std::string next_effect = map[next_id];
-          ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), list.size(), not_found ? "not found" : "found", next_effect.c_str());
+          ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), effect_map.list.size(), not_found ? "not found" : "found", next_effect.c_str());
 
-          auto call = id(code).turn_on();
-          call.set_effect(next_effect);
-          call.perform();
-          id(effect_type) = type_id;
+          if (mode != "set") {
+            auto call = id(code).turn_on();
+            call.set_effect(next_effect);
+            call.perform();
+          }
+
+          id(effect_type) = effect_map.id;
           id(effect) = next_id;
+          id(status_effect).publish_state(next_effect);
+          id(status_effect_type).publish_state(effect_map.type);
+
 
 binary_sensor:
   - name: Toggle
