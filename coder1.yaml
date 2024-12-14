@@ -19,6 +19,5 @@ substitutions:
   gpio_shunt: 'GPIO17'
   gpio_toggle: 'GPIO19'
   gpio_trigger: 'GPIO32'
-  toggle_follower: 'false'
 
 <<: !include main.yaml

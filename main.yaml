@@ -65,15 +65,17 @@ button:
     id: toggle
     platform: template
     on_press:
-      - lambda: |-
-          if (id(shunt).state || ("${toggle_follower}" == "true" && id(code).get_effect_name() != "None" || id(code).current_values.is_on())) {
-            id(code).turn_off().perform();
-          } else {
-           id(set_effect)->execute("restore", "set");
-           if ("${toggle_follower}" != "true" || id(zone_input).state) {
-             id(shunt).turn_on();
-           }
-          }
+      - if:
+          condition:
+            - switch.is_on: shunt
+          then:
+            - light.turn_off: code
+          else:
+            - script.execute:
+                id: set_effect
+                type: restore
+                mode: set
+            - switch.turn_on: shunt
 
   - name: Doorbell
     id: doorbell
