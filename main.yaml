@@ -66,11 +66,11 @@ button:
     platform: template
     on_press:
       - lambda: |-
-          if ( id(shunt).state || ("${toggle_follower}" == "true" && id(code).get_effect_name() != "None" || id(code).current_values.is_on()) ) {
+          if (id(shunt).state || ("${toggle_follower}" == "true" && id(code).get_effect_name() != "None" || id(code).current_values.is_on())) {
             id(code).turn_off().perform();
           } else {
            id(set_effect)->execute("restore", "set");
-           if ( "${toggle_follower}" != "true" || id(zone_input).state ) {
+           if ("${toggle_follower}" != "true" || id(zone_input).state) {
              id(shunt).turn_on();
            }
           }
@@ -1141,14 +1141,9 @@ script:
               key += 1;
            }
 
-          int next_id;;
-          bool not_found;
+          int next_id;
 
-          if (id(effect_type) == effect_map.id) {
-            not_found = find(effect_map.list.begin(), effect_map.list.end(), map[id(effect)]) == effect_map.list.end();
-          } else {
-            not_found = true;
-          }
+          bool not_found = (id(effect_type) == effect_map.id) ? find(effect_map.list.begin(), effect_map.list.end(), map[id(effect)]) == effect_map.list.end() : true;
 
           if (mode == "down" && (not_found || id(effect) - 1 < 0)) {
             next_id = effect_map.list.size() - 1;
@@ -1175,7 +1170,6 @@ script:
           id(effect) = next_id;
           id(status_effect).publish_state(next_effect);
           id(status_effect_type).publish_state(effect_map.type);
-
 
 binary_sensor:
   - name: Toggle
