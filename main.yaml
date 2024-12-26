@@ -61,22 +61,6 @@ button:
     name: Safe Mode Boot
     entity_category: diagnostic
 
-  - name: Toggle
-    id: toggle
-    platform: template
-    on_press:
-      - if:
-          condition:
-            - switch.is_on: shunt
-          then:
-            - light.turn_off: code
-          else:
-            - script.execute:
-                id: set_effect
-                type: restore
-                mode: set
-            - switch.turn_on: shunt
-
   - name: Doorbell
     id: doorbell
     platform: template
@@ -158,6 +142,21 @@ output:
     inverted: ${gpio_led_invert}
 
 switch:
+  - name: Toggle
+    id: toggle
+    platform: template
+    lambda: |-
+      return (id(shunt).state) ? true : false;
+    turn_on_action:
+      - script.execute:
+          id: set_effect
+          type: restore
+          mode: set
+      - delay: 66ms
+      - switch.turn_on: shunt
+    turn_off_action:
+      - light.turn_off: code
+
   - platform: gpio
     pin: ${gpio_reverse}
     id: reverse
@@ -703,6 +702,29 @@ light:
             if (state == 60)
               state = 0;
 
+
+      - lambda:
+          name: Jingle Bells
+          update_interval: 250ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            auto call = id(code).turn_on();
+            if (state != 1 && state != 3 && state != 5 &&
+               state != 9 && state != 11 && state != 13 &&
+               state != 17 && state != 19 && state != 21 && state != 23 &&
+               state != 25 ) {
+              call.set_brightness(0);
+            }
+
+            call.set_publish(false);
+            call.perform();
+            state += 1;
+            if (state == 32)
+              state = 0;
+
       - lambda:
           name: Temporal 3
           update_interval: 500ms
@@ -1069,6 +1091,7 @@ globals:
  - id: code_effects
    type: std::vector<std::string>
    initial_value: '{
+     "Jingle Bells",
      "Federal Signal Siren",
      "Shart Sync",
      "Smart Sync",
@@ -1135,17 +1158,9 @@ script:
             }
           }
 
-          int key = 0;
-          std::map<int, std::string> map;
-
-          for ( auto value : effect_map.list ) {
-              map[key] = value;
-              key += 1;
-           }
-
           int next_id;
 
-          bool not_found = (id(effect_type) == effect_map.id) ? find(effect_map.list.begin(), effect_map.list.end(), map[id(effect)]) == effect_map.list.end() : true;
+          bool not_found = (id(effect_type) == effect_map.id) ? find(effect_map.list.begin(), effect_map.list.end(), effect_map.list[id(effect)]) == effect_map.list.end() : true;
 
           if (mode == "down" && (not_found || id(effect) - 1 < 0)) {
             next_id = effect_map.list.size() - 1;
@@ -1159,8 +1174,8 @@ script:
             next_id = id(effect);
           }
 
-          std::string next_effect = map[next_id];
-          ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), effect_map.list.size(), not_found ? "not found" : "found", next_effect.c_str());
+          std::string next_effect = effect_map.list[next_id];
+          //ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), effect_map.list.size(), not_found ? "not found" : "found", next_effect.c_str());
 
           if (mode != "restore") {
             auto call = id(code).turn_on();
@@ -1170,8 +1185,8 @@ script:
 
           id(effect_type) = effect_map.id;
           id(effect) = next_id;
-          id(status_effect).publish_state(next_effect);
-          id(status_effect_type).publish_state(effect_map.type);
+          //id(status_effect).publish_state(next_effect);
+          //id(status_effect_type).publish_state(effect_map.type);
 
 binary_sensor:
   - name: Toggle
@@ -1184,7 +1199,7 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: toggle
+      - switch.toggle: toggle
 
   - name: Doorbell
     platform: gpio
@@ -1216,6 +1231,7 @@ binary_sensor:
           id: set_effect
           type: restore
           mode: set
+      - delay: 66ms
       - switch.turn_on: shunt
     on_release:
       - light.turn_off: code
@@ -1230,7 +1246,10 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: fire_up
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: fire
 
   - name: Fire Down
     platform: gpio
@@ -1242,7 +1261,10 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: fire_down
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: fire
 
   - name: March Up
     platform: gpio
@@ -1254,7 +1276,10 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: march_up
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: march
 
   - name: March Down
     platform: gpio
@@ -1266,7 +1291,10 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: march_down
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: march
 
   - name: Code Up
     platform: gpio
@@ -1278,7 +1306,10 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: code_up
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: code
 
   - name: Code Down
     platform: gpio
@@ -1290,11 +1321,14 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - button.press: code_down
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: code
 
 # Enable logging
 logger:
-    level: VERBOSE
+    level: DEBUG
 
 # Enable Home Assistant API
 api:
