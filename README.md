@@ -4,7 +4,7 @@ This module aims to recreate the notion of an antique mechanical fire pull stati
 
 ## Features
 - Support for well-known major codes and various march-time rates
-- Replications various old codes, from panels or pull stations, such as the standard electric march time, and various siren code wheeels.
+- Replicates various codes from old panels and pull stations, such as the standard electric march time, and various siren code wheeels.
 - Optional SSD1306 128x64 OLED to display status and the name of the current code.
 - A shunt, which typically provides NC/NO "running" status of the pull station. Some models have a switch to allow the coded output to have independent power, or to pass-thru the shunt first, which allows some interesting combinations.
 - **Reverse** and **Trigger** auxilary outputs are also provided. These have multiple uses at present:
