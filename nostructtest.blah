@@ -145,7 +145,8 @@ switch:
   - name: Toggle
     id: toggle
     platform: template
-    lambda: 'return (id(shunt).state);'
+    lambda: |-
+      return (id(shunt).state) ? true : false;
     turn_on_action:
       - script.execute:
           id: set_effect
@@ -701,29 +702,6 @@ light:
             if (state == 60)
               state = 0;
 
-
-      - lambda:
-          name: Jingle Bells
-          update_interval: 250ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3 && state != 5 &&
-               state != 9 && state != 11 && state != 13 &&
-               state != 17 && state != 19 && state != 21 && state != 23 &&
-               state != 25 ) {
-              call.set_brightness(0);
-            }
-
-            call.set_publish(false);
-            call.perform();
-            state += 1;
-            if (state == 32)
-              state = 0;
-
       - lambda:
           name: Temporal 3
           update_interval: 500ms
@@ -1090,7 +1068,6 @@ globals:
  - id: code_effects
    type: std::vector<std::string>
    initial_value: '{
-     "Jingle Bells",
      "Federal Signal Siren",
      "Shart Sync",
      "Smart Sync",
@@ -1127,6 +1104,7 @@ sensor:
 
 script:
   - id: set_effect
+    mode: queued
     parameters:
       type: std::string
       mode: std::string
@@ -1135,37 +1113,32 @@ script:
           id(reverse).turn_off();
           id(trigger).turn_off();
 
-          struct effects {
-            int id;
-            std::string type;
-            std::vector<std::string> list;
-          };
 
-          effects effects_map[] {
-            { 0, "fire", id(fire_effects) },
-            { 1, "march", id(march_effects) },
-            { 2, "code", id(code_effects) },
-            { 3, "doorbell", id(doorbell_effects) }
-          };
-
-          effects effect_map;
-
-          for ( auto value : effects_map ){
-            if (type == value.type || (type == "restore" && id(effect_type) == value.id )) {
-              effect_map = value;
-              break;
-            }
+          std::vector<std::string> list;
+          int type_id;
+          if (type == "fire" || (type == "restore" && id(effect_type) == 0)) {
+            list = id(fire_effects);
+            type_id = 0;
+          } else if (type == "march" || (type == "restore" && id(effect_type) == 1)) {
+            list = id(march_effects);
+            type_id = 1;
+          } else if (type == "code" || (type == "restore" && id(effect_type) == 2))  {
+            list = id(code_effects);
+            type_id = 2;
+          } else if (type == "doorbell" || (type == "restore" && id(effect_type) == 3)) {
+            list = id(doorbell_effects);
+            type_id = 3;
           }
 
           int next_id;
 
-          bool not_found = (id(effect_type) == effect_map.id) ? find(effect_map.list.begin(), effect_map.list.end(), effect_map.list[id(effect)]) == effect_map.list.end() : true;
+          bool not_found = (id(effect_type) == type_id) ? find(list.begin(), list.end(), list[id(effect)]) == list.end() : true;
 
           if (mode == "down" && (not_found || id(effect) - 1 < 0)) {
-            next_id = effect_map.list.size() - 1;
+            next_id = list.size() - 1;
           } else if (mode == "down") {
             next_id = id(effect) - 1;
-          } else if (mode == "up" && (not_found || id(effect) + 1 >= effect_map.list.size())) {
+          } else if (mode == "up" && (not_found || id(effect) + 1 >= list.size())) {
             next_id = 0;
           } else if (mode == "up") {
             next_id = id(effect) + 1;
@@ -1173,8 +1146,8 @@ script:
             next_id = id(effect);
           }
 
-          std::string next_effect = effect_map.list[next_id];
-          //ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), effect_map.list.size(), not_found ? "not found" : "found", next_effect.c_str());
+          std::string next_effect = list[next_id];
+          //ESP_LOGD("status", "set_effect - type: %s - mode: %s - list size: %i - item %s - effect: %s", type.c_str(), mode.c_str(), list.size(), not_found ? "not found" : "found", next_effect.c_str());
 
           if (mode != "restore") {
             auto call = id(code).turn_on();
@@ -1182,7 +1155,7 @@ script:
             call.perform();
           }
 
-          id(effect_type) = effect_map.id;
+          id(effect_type) = type_id;
           id(effect) = next_id;
           //id(status_effect).publish_state(next_effect);
           //id(status_effect_type).publish_state(effect_map.type);
@@ -1275,10 +1248,7 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: march
+      - button.press: march_up
 
   - name: March Down
     platform: gpio
@@ -1290,10 +1260,7 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - script.execute:
-          id: set_effect
-          mode: down
-          type: march
+      - button.press: march_down
 
   - name: Code Up
     platform: gpio
@@ -1305,10 +1272,7 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: code
+      - button.press: code_up
 
   - name: Code Down
     platform: gpio
@@ -1320,15 +1284,11 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_click:
-      - script.execute:
-          id: set_effect
-          mode: down
-          type: code
+      - button.press: code_down
 
 # Enable logging
 logger:
-    level: DEBUG
-    baud_rate: 0
+    level: VERBOSE
 
 # Enable Home Assistant API
 api:
