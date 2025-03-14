@@ -11,6 +11,7 @@ This module aims to recreate the notion of an antique mechanical fire pull stati
   - controlling PWM motor controllers for doing sync protocols
   - tone module switching
   - triggering door chimes w/multiple notes
+- Presignal input, with general alarm precedence.
 
 ## User Interface
 The fire sequencer has 3 sections of codes, which are accessed by 3 pairs of up/down buttons. Additionally, there's a run/stop toggle. No menu diving required.
@@ -24,6 +25,7 @@ The fire sequencer has 3 sections of codes, which are accessed by 3 pairs of up/
 ## Inputs/Outputs
 - Zone input (Optocoupler/Pulldown)
   - gpio_zone_invert is typically set to true when using an optocoupler, and false otherwise.
+- PreSignal input, which sends a short pulse every 3 seconds
 - Doorbell Input (Pulldown, Relay Activated)
   - cycles through a dedicated list of "doorbell" codes upon each button press
   - can be attached to external relay for activation w/smart doorbells, etc

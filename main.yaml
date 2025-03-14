@@ -6,7 +6,7 @@ esphome:
       - delay: 66ms
       - if:
           condition:
-            - binary_sensor.is_on: zone_input
+            binary_sensor.is_on: zone_input
           then:
             - script.execute:
                 id: set_effect
@@ -18,6 +18,11 @@ esphome:
                 id: set_effect
                 type: restore
                 mode: restore
+            - if:
+                condition:
+                  binary_sensor.is_on: presignal_input
+                then:
+                  - script.execute: set_presignal
 
 esp32:
   board: esp32doit-devkit-v1
@@ -67,7 +72,7 @@ button:
     on_press:
       - if:
           condition:
-            - switch.is_on: shunt
+            switch.is_on: shunt
           then:
             - light.turn_off: code
           else:
@@ -147,14 +152,29 @@ switch:
     platform: template
     lambda: 'return (id(shunt).state);'
     turn_on_action:
-      - script.execute:
-          id: set_effect
-          type: restore
-          mode: set
-      - delay: 66ms
-      - switch.turn_on: shunt
+      - if:
+          condition:
+            binary_sensor.is_on: presignal_input
+          then:
+            - script.execute: set_presignal
+          else:
+            - script.execute:
+                id: set_effect
+                type: restore
+                mode: set
+            - delay: 66ms
+            - switch.turn_on: shunt
     turn_off_action:
-      - light.turn_off: code
+      - if:
+          condition:
+            binary_sensor.is_on: in_presignal
+          then:
+            - script.execute:
+                id: set_effect
+                type: restore
+                mode: set
+          else:
+            - light.turn_off: code
 
   - platform: gpio
     pin: ${gpio_reverse}
@@ -163,7 +183,7 @@ switch:
     on_turn_on:
       - if:
           condition:
-            - lambda: 'return id(code).get_effect_name() == "None";'
+            lambda: 'return id(code).get_effect_name() == "None";'
           then:
             - delay: 5000ms
             - switch.turn_off: reverse
@@ -175,7 +195,7 @@ switch:
     on_turn_on:
       - if:
           condition:
-            - lambda: 'return id(code).get_effect_name() == "None";'
+            lambda: 'return id(code).get_effect_name() == "None";'
           then:
             - delay: 5000ms
             - switch.turn_off: shunt
@@ -187,7 +207,7 @@ switch:
     on_turn_on:
       - if:
           condition:
-            - lambda: 'return id(code).get_effect_name() == "None";'
+            lambda: 'return id(code).get_effect_name() == "None";'
           then:
             - delay: 5000ms
             - switch.turn_off: trigger
@@ -215,15 +235,22 @@ light:
 
       - if:
           condition:
-             - lambda: 'return id(code).get_effect_name() == "None" && ! id(code).current_values.is_on();'
+            lambda: 'return id(code).get_effect_name() == "None" && ! id(code).current_values.is_on();'
           then:
             - switch.turn_off: shunt
             - switch.turn_off: reverse
             - switch.turn_off: trigger
+            - globals.set:
+                id: alarm_active
+                value: 'false'
+            - globals.set:
+                id: presignal_active
+                value: 'false'
+
       - delay: 10ms
       - if:
           condition:
-            - lambda: 'return id(code).get_effect_name() == "None" && id(code).current_values.is_on();'
+            lambda: 'return id(code).get_effect_name() == "None" && id(code).current_values.is_on();'
           then:
             - delay: 5000ms
             - light.turn_off: code
@@ -396,6 +423,14 @@ light:
               duration: 150ms
             - state: false
               duration: 400ms
+
+      - strobe:
+          name: PreSignal
+          colors:
+            - state: true
+              duration: 100ms
+            - state: false
+              duration: 3000ms
 
       - lambda:
           name: Shart Sync
@@ -1044,6 +1079,16 @@ light:
               offcall.perform();
 
 globals:
+ - id: alarm_active
+   type: bool
+   restore_value: no
+   initial_value: 'false'
+
+ - id: presignal_active
+   type: bool
+   restore_value: no
+   initial_value: 'false'
+
  - id: effect_type
    type: short
    restore_value: yes
@@ -1072,6 +1117,7 @@ globals:
  - id: march_effects
    type: std::vector<std::string>
    initial_value: '{
+     "PreSignal",
      "March 20",
      "March 30",
      "March 60",
@@ -1180,14 +1226,39 @@ script:
             auto call = id(code).turn_on();
             call.set_effect(next_effect);
             call.perform();
+            id(alarm_active) = true;
           }
 
           id(effect_type) = effect_map.id;
           id(effect) = next_id;
-          //id(status_effect).publish_state(next_effect);
-          //id(status_effect_type).publish_state(effect_map.type);
+          id(status_effect).publish_state(next_effect);
+          id(status_effect_type).publish_state(effect_map.type);
+
+  - id: set_presignal
+    then:
+      - light.turn_on:
+          id: code
+          effect: PreSignal
+      - switch.turn_on: shunt
+      - globals.set:
+          id: presignal_active
+          value: 'true'
 
 binary_sensor:
+  - name: In Alarm
+    id: in_alarm
+    platform: template
+    lambda: 'return (id(alarm_active) && id(shunt).state);'
+    on_press:
+      - globals.set:
+          id: presignal_active
+          value: 'false'
+
+  - name: In PreSignal
+    id: in_presignal
+    platform: template
+    lambda: 'return (id(presignal_active) && id(shunt).state);'
+
   - name: Toggle
     platform: gpio
     pin:
@@ -1213,6 +1284,26 @@ binary_sensor:
     on_press:
       - button.press: doorbell
 
+  - name: PreSignal Input
+    id: presignal_input
+    platform: gpio
+    pin:
+      number: ${gpio_presignal}
+      inverted: ${gpio_presignal_invert}
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 100ms
+    on_press:
+      - script.execute: set_presignal
+    on_release:
+      - if:
+          condition:
+            binary_sensor.is_off: zone_input
+          then:
+            - light.turn_off: code
+
   - name: Zone Input
     id: zone_input
     platform: gpio
@@ -1221,7 +1312,7 @@ binary_sensor:
       inverted: ${gpio_zone_invert}
       mode:
         input: true
-        pulldown: true
+        pullup: true
     filters:
       - delayed_on: 10ms
       - delayed_off: 100ms

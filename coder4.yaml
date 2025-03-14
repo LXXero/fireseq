@@ -14,6 +14,8 @@ substitutions:
   gpio_zone: 'GPIO27'
   gpio_zone_invert: 'true'
   gpio_reverse: 'GPIO25'
+  gpio_presignal: 'GPIO34'
+  gpio_presignal_invert: 'false'
   gpio_scl: 'GPIO16'
   gpio_sda: 'GPIO17'
   gpio_shunt: 'GPIO33'
