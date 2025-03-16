@@ -1296,7 +1296,11 @@ binary_sensor:
       - delayed_on: 10ms
       - delayed_off: 100ms
     on_press:
-      - script.execute: set_presignal
+      - if:
+          condition:
+            binary_sensor.is_off: zone_input
+          then:
+            - script.execute: set_presignal
     on_release:
       - if:
           condition:
