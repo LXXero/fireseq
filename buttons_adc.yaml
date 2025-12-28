@@ -1,0 +1,136 @@
+# ADC resistor ladder panel buttons (7 buttons, 1 GPIO)
+# Requires substitution: gpio_buttons_adc (use GPIO32 or GPIO33 for internal pullup)
+#
+# Hardware setup: 10 x 1K resistors in series from 3.3V to GND
+# Buttons connect ADC pin to each tap point
+# Use internal pullup - no press reads 3.3V
+#
+# Wiring diagram:
+#   3.3V
+#    |
+#   [1K]--- Toggle       (2.97V) <- most important, highest voltage
+#   [1K]--- Fire Up      (2.64V)
+#   [1K]--- Fire Down    (2.31V)
+#   [1K]--- March Up     (1.98V)
+#   [1K]--- March Down   (1.65V)
+#   [1K]--- Code Up      (1.32V)
+#   [1K]--- Code Down    (0.99V)
+#   [1K]--- (future)     (0.66V)
+#   [1K]--- (future)     (0.33V)
+#   [1K]--- (future)     (0.00V)
+#    |
+#   GND
+#
+# All button common wires connect to gpio_buttons_adc
+
+sensor:
+  - platform: adc
+    pin:
+      number: ${gpio_buttons_adc}
+      mode:
+        input: true
+        pullup: true
+    id: button_ladder
+    name: "Button Ladder"
+    update_interval: 50ms
+    attenuation: 12db
+    filters:
+      - median:
+          window_size: 5
+          send_every: 1
+
+binary_sensor:
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "Toggle"
+    threshold:
+      upper: 3.15
+      lower: 2.80
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - switch.toggle: toggle
+
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "Fire Up"
+    threshold:
+      upper: 2.80
+      lower: 2.47
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: fire
+
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "Fire Down"
+    threshold:
+      upper: 2.47
+      lower: 2.14
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: fire
+
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "March Up"
+    threshold:
+      upper: 2.14
+      lower: 1.81
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: march
+
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "March Down"
+    threshold:
+      upper: 1.81
+      lower: 1.48
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: march
+
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "Code Up"
+    threshold:
+      upper: 1.48
+      lower: 1.15
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: code
+
+  - platform: analog_threshold
+    sensor_id: button_ladder
+    name: "Code Down"
+    threshold:
+      upper: 1.15
+      lower: 0.82
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: code

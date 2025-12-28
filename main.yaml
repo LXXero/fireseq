@@ -1171,6 +1171,39 @@ sensor:
     id: uptime_sensor
     update_interval: 5min
 
+  - platform: pulse_meter
+    pin:
+      number: GPIO36
+      inverted: true
+    name: "Pulse Counter"
+    id: pulse_counter
+    internal: true
+    internal_filter: 20ms
+    internal_filter_mode: PULSE
+    unit_of_measurement: "ms"
+    filters:
+      - lambda: return millis();
+    total:
+      id: pulse_total
+      name: 'Pulse Total'
+
+  - platform: template
+    name: "Number Readout"
+    id: number_readout
+    update_interval: 100ms
+    accuracy_decimals: 0
+    lambda: |-
+      unsigned long now = millis();
+      int current_count = id(pulse_total).state;
+      if ((now - id(pulse_counter).state > 750) && (current_count > 0) ) {
+        // Reset the raw pulse counter for the next number
+        id(pulse_counter).set_total_pulses(0);
+        return current_count;
+      }
+      return {};
+    unit_of_measurement: "pulses"
+
+
 script:
   - id: set_effect
     parameters:
@@ -1259,18 +1292,6 @@ binary_sensor:
     platform: template
     lambda: 'return (id(presignal_active) && id(shunt).state);'
 
-  - name: Toggle
-    platform: gpio
-    pin:
-      number: ${gpio_toggle}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - switch.toggle: toggle
-
   - name: Doorbell
     platform: gpio
     pin:
@@ -1329,96 +1350,6 @@ binary_sensor:
       - switch.turn_on: shunt
     on_release:
       - light.turn_off: code
-
-  - name: Fire Up
-    platform: gpio
-    pin:
-      number: ${gpio_fire_up}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: fire
-
-  - name: Fire Down
-    platform: gpio
-    pin:
-      number: ${gpio_fire_down}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: down
-          type: fire
-
-  - name: March Up
-    platform: gpio
-    pin:
-      number: ${gpio_march_up}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: march
-
-  - name: March Down
-    platform: gpio
-    pin:
-      number: ${gpio_march_down}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: down
-          type: march
-
-  - name: Code Up
-    platform: gpio
-    pin:
-      number: ${gpio_code_up}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: code
-
-  - name: Code Down
-    platform: gpio
-    pin:
-      number: ${gpio_code_down}
-      mode:
-        input: true
-        pulldown: true
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      - script.execute:
-          id: set_effect
-          mode: down
-          type: code
 
 # Enable logging
 logger:

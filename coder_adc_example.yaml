@@ -1,0 +1,36 @@
+# Example: ESP32 with resistor ladder buttons (1 GPIO for 7 buttons)
+#
+# Hardware setup:
+#   - 10 x 1K resistors in series from 3.3V to GND
+#   - Each button connects gpio_buttons_adc to a tap on the ladder
+#   - See buttons_adc.yaml for wiring diagram and voltage levels
+#
+# Button order on ladder (top to bottom):
+#   Toggle, Fire Up, Fire Down, March Up, March Down, Code Up, Code Down
+#
+# GPIO32 or GPIO33 recommended (have internal pullup + ADC)
+
+substitutions:
+  name: 'coder-adc'
+  # Outputs
+  gpio_code: 'GPIO16'
+  gpio_led: 'GPIO1'
+  gpio_led_invert: 'false'
+  gpio_reverse: 'GPIO13'
+  gpio_shunt: 'GPIO17'
+  gpio_trigger: 'GPIO23'
+  # Inputs
+  gpio_doorbell: 'GPIO35'
+  gpio_zone: 'GPIO33'
+  gpio_zone_invert: 'false'
+  gpio_presignal: 'GPIO34'
+  gpio_presignal_invert: 'false'
+  # I2C (for OLED)
+  gpio_scl: 'GPIO25'
+  gpio_sda: 'GPIO27'
+  # ADC button ladder (uses internal pullup)
+  gpio_buttons_adc: 'GPIO32'
+
+packages:
+  main: !include main.yaml
+  buttons: !include buttons_adc.yaml

@@ -1,0 +1,106 @@
+# GPIO-based panel buttons (7 buttons, 7 GPIOs)
+# Requires substitutions: gpio_toggle, gpio_fire_up, gpio_fire_down,
+#   gpio_march_up, gpio_march_down, gpio_code_up, gpio_code_down
+
+binary_sensor:
+  - name: Toggle
+    platform: gpio
+    pin:
+      number: ${gpio_toggle}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - switch.toggle: toggle
+
+  - name: Fire Up
+    platform: gpio
+    pin:
+      number: ${gpio_fire_up}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: fire
+
+  - name: Fire Down
+    platform: gpio
+    pin:
+      number: ${gpio_fire_down}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: fire
+
+  - name: March Up
+    platform: gpio
+    pin:
+      number: ${gpio_march_up}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: march
+
+  - name: March Down
+    platform: gpio
+    pin:
+      number: ${gpio_march_down}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: march
+
+  - name: Code Up
+    platform: gpio
+    pin:
+      number: ${gpio_code_up}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - script.execute:
+          id: set_effect
+          mode: up
+          type: code
+
+  - name: Code Down
+    platform: gpio
+    pin:
+      number: ${gpio_code_down}
+      mode:
+        input: true
+        pulldown: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - script.execute:
+          id: set_effect
+          mode: down
+          type: code
