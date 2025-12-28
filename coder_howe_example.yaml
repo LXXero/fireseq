@@ -1,0 +1,35 @@
+# Example: ESP32 with Howe decoder + resistor ladder buttons
+#
+# This config is for a device that:
+#   - Decodes incoming Howe transmitter signals
+#   - Uses resistor ladder for panel buttons (frees up GPIOs)
+#   - Can still output codes (sequencer functionality)
+
+substitutions:
+  name: 'coder-howe'
+  # Outputs
+  gpio_code: 'GPIO16'
+  gpio_led: 'GPIO1'
+  gpio_led_invert: 'false'
+  gpio_reverse: 'GPIO13'
+  gpio_shunt: 'GPIO17'
+  gpio_trigger: 'GPIO23'
+  # Inputs
+  gpio_doorbell: 'GPIO35'
+  gpio_zone: 'GPIO33'
+  gpio_zone_invert: 'false'
+  gpio_presignal: 'GPIO34'
+  gpio_presignal_invert: 'false'
+  # I2C (for OLED)
+  gpio_scl: 'GPIO25'
+  gpio_sda: 'GPIO27'
+  # ADC button ladder (uses internal pullup)
+  gpio_buttons_adc: 'GPIO32'
+  # Howe decoder inputs (relay dry contacts with internal pullup)
+  gpio_howe_oscillator: 'GPIO4'
+  gpio_howe_signal: 'GPIO18'
+
+packages:
+  main: !include main.yaml
+  buttons: !include buttons_adc.yaml
+  howe: !include howe_decoder.yaml
