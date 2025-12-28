@@ -1,9 +1,9 @@
 # ADC resistor ladder panel buttons (7 buttons, 1 GPIO)
-# Requires substitution: gpio_buttons_adc (use GPIO32 or GPIO33 for internal pullup)
+# Requires substitution: gpio_buttons_adc
 #
 # Hardware setup: 10 x 1K resistors in series from 3.3V to GND
 # Buttons connect ADC pin to each tap point
-# Use internal pullup - no press reads 3.3V
+# Use external 10K pullup from gpio_buttons_adc to 3.3V - no press reads 3.3V
 #
 # Wiring diagram:
 #   3.3V
@@ -29,34 +29,33 @@ sensor:
       number: ${gpio_buttons_adc}
       mode:
         input: true
-        pullup: true
     id: button_ladder
     name: "Button Ladder"
-    update_interval: 50ms
+    internal: true
+    update_interval: 20ms
     attenuation: 12db
     filters:
       - median:
-          window_size: 5
+          window_size: 7
           send_every: 1
+      - delta: 0.05
 
 binary_sensor:
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "Toggle"
-    threshold:
-      upper: 3.15
-      lower: 2.80
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 2.85 && v <= 3.05);
     filters:
       - delayed_on: 10ms
     on_press:
       - switch.toggle: toggle
 
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "Fire Up"
-    threshold:
-      upper: 2.80
-      lower: 2.47
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 2.60 && v <= 2.84);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -65,12 +64,11 @@ binary_sensor:
           mode: up
           type: fire
 
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "Fire Down"
-    threshold:
-      upper: 2.47
-      lower: 2.14
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 2.35 && v <= 2.59);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -79,12 +77,11 @@ binary_sensor:
           mode: down
           type: fire
 
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "March Up"
-    threshold:
-      upper: 2.14
-      lower: 1.81
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 2.05 && v <= 2.34);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -93,12 +90,11 @@ binary_sensor:
           mode: up
           type: march
 
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "March Down"
-    threshold:
-      upper: 1.81
-      lower: 1.48
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 1.75 && v <= 2.04);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -107,12 +103,11 @@ binary_sensor:
           mode: down
           type: march
 
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "Code Up"
-    threshold:
-      upper: 1.48
-      lower: 1.15
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 1.45 && v <= 1.74);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -121,12 +116,11 @@ binary_sensor:
           mode: up
           type: code
 
-  - platform: analog_threshold
-    sensor_id: button_ladder
+  - platform: template
     name: "Code Down"
-    threshold:
-      upper: 1.15
-      lower: 0.82
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 1.15 && v <= 1.44);
     filters:
       - delayed_on: 10ms
     on_press:
