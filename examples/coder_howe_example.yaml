@@ -33,8 +33,8 @@ substitutions:
 
 packages:
   main: !include main.yaml
-  buttons: !include buttons_adc.yaml
-  display: !include display_oled.yaml
-  diagnostics: !include diagnostics.yaml
-  #pulse_counter: !include pulse_counter.yaml
-  howe: !include howe_decoder.yaml
+  buttons: !include includes/buttons_adc.yaml
+  display: !include includes/display_oled.yaml
+  diagnostics: !include includes/diagnostics.yaml
+  #pulse_counter: !include includes/pulse_counter.yaml
+  howe: !include includes/howe_decoder.yaml
