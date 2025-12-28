@@ -1,0 +1,12 @@
+# Diagnostics Sensors
+# Optional package - WiFi signal strength and uptime monitoring
+
+sensor:
+  - platform: wifi_signal
+    name: "$name WiFi Signal"
+    update_interval: 5min
+
+  - platform: uptime
+    name: "$name Uptime"
+    id: uptime_sensor
+    update_interval: 5min

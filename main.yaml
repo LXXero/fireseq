@@ -30,16 +30,6 @@ esp32:
   framework:
     type: esp-idf
 
-i2c:
-  frequency: 800kHz
-  scl: ${gpio_scl}
-  sda: ${gpio_sda}
-
-font:
-  - file: 'FreeSans.ttf'
-    id: font1
-    size: 14
-
 text_sensor:
   - platform: template
     name: "Current Effect"
@@ -52,16 +42,6 @@ text_sensor:
   - platform: template
     name: "Set Effect Type"
     id: status_effect_type
-
-display:
-  - platform: ssd1306_i2c
-    model: "SSD1306 128x64"
-    address: 0x3C
-    lambda: |-
-      it.print(0, 0, id(font1), "Fire Sequencer!");
-      it.printf(0, 15, id(font1), "Shunt: %s", id(shunt).state ? "On" : "Off");
-      it.printf(0, 30, id(font1), "Code: %s",  id(code).get_effect_name() != "None" ? "On":  id(code).current_values.is_on() ? "On" : "Off" );
-      it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str());
 
 button:
   - platform: safe_mode
@@ -148,6 +128,21 @@ output:
     id: gpio_led
     inverted: ${gpio_led_invert}
 
+  # Template output that mirrors to LED
+  - platform: template
+    id: code_output
+    type: binary
+    write_action:
+      - if:
+          condition:
+            lambda: 'return state;'
+          then:
+            - output.turn_on: gpio_code
+            - output.turn_on: gpio_led
+          else:
+            - output.turn_off: gpio_code
+            - output.turn_off: gpio_led
+
 switch:
   - name: Toggle
     id: toggle
@@ -216,18 +211,7 @@ switch:
 
 light:
   - platform: binary
-    output: gpio_code
-    id: relay
-    name: relay
-    internal: true
-
-  - platform: binary
-    output: gpio_led
-    id: led
-    name: led
-    internal: true
-
-  - platform: partition
+    output: code_output
     id: code
     name: code
     on_state:
@@ -256,10 +240,6 @@ light:
           then:
             - delay: 5000ms
             - light.turn_off: code
-
-    segments:
-      - single_light_id: relay
-      - single_light_id: led
     effects:
       - lambda:
           name: 'On'
@@ -270,169 +250,135 @@ light:
           name: 'Off'
           update_interval: 250ms
           lambda: |-
-            auto call = id(code).turn_on();
-            id(code).turn_on().set_effect("Off").set_publish(false).perform();
-            call.set_brightness(0);
-            call.set_publish(false);
-            call.perform();
+            id(code_output).turn_off();
 
-      - strobe:
+      - lambda:
           name: March 20
-          colors:
-            - state: true
-              duration: 1500ms
-            - state: false
-              duration: 1500ms
+          update_interval: 1500ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 30
-          colors:
-            - state: true
-              duration: 1000ms
-            - state: false
-              duration: 1000ms
+          update_interval: 1000ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 60
-          colors:
-            - state: true
-              duration: 500ms
-            - state: false
-              duration: 500ms
+          update_interval: 500ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 90
-          colors:
-            - state: true
-              duration: 333ms
-            - state: false
-              duration: 333ms
+          update_interval: 333ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 100
-          colors:
-            - state: true
-              duration: 300ms
-            - state: false
-              duration: 300ms
+          update_interval: 300ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 120
-          colors:
-            - state: true
-              duration: 250ms
-            - state: false
-              duration: 250ms
+          update_interval: 250ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 150
-          colors:
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
+          update_interval: 200ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 180
-          colors:
-            - state: true
-              duration: 166ms
-            - state: false
-              duration: 166ms
+          update_interval: 166ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 200
-          colors:
-            - state: true
-              duration: 150ms
-            - state: false
-              duration: 150ms
+          update_interval: 150ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 250
-          colors:
-            - state: true
-              duration: 120ms
-            - state: false
-              duration: 120ms
+          update_interval: 120ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 300 / Steady T4
-          colors:
-            - state: true
-              duration: 100ms
-            - state: false
-              duration: 100ms
+          update_interval: 100ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
 
-      - strobe:
+      - lambda:
           name: March 150 Fun
-          colors:
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
+          update_interval: 66ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) state = 0;
+            // 0-41: 7 cycles of 200ms on/off (3 ticks each = 198ms ≈ 200ms)
+            // 42-47: 3 cycles of 66ms on/off (1 tick each)
+            if (state < 42) {
+              // 200ms phase: 3 ticks on, 3 ticks off
+              if (state % 6 < 3) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+            } else {
+              // 66ms phase: 1 tick on, 1 tick off
+              if (state % 2 == 0) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+            }
+            state++;
+            if (state >= 48) state = 0;
 
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
-
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
-
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
-
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
-
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
-
-            - state: true
-              duration: 200ms
-            - state: false
-              duration: 200ms
-
-
-            - state: true
-              duration: 66ms
-            - state: false
-              duration: 66ms
-
-            - state: true
-              duration: 66ms
-            - state: false
-              duration: 66ms
-
-            - state: true
-              duration: 66ms
-            - state: false
-              duration: 66ms
-
-      - strobe:
+      - lambda:
           name: Standard March
-          colors:
-            - state: true
-              duration: 150ms
-            - state: false
-              duration: 400ms
+          update_interval: 50ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) state = 0;
+            // 150ms on (3 ticks), 400ms off (8 ticks) = 11 ticks total
+            if (state < 3) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+            state++;
+            if (state >= 11) state = 0;
 
-      - strobe:
+      - lambda:
           name: PreSignal
-          colors:
-            - state: true
-              duration: 100ms
-            - state: false
-              duration: 3000ms
+          update_interval: 100ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) state = 0;
+            // 100ms on (1 tick), 3000ms off (30 ticks) = 31 ticks total
+            if (state == 0) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+            state++;
+            if (state >= 31) state = 0;
 
       - lambda:
           name: Shart Sync
@@ -442,15 +388,14 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
 
             if (state == 1 || state == 116 || state == 231 || state == 346  ||
                 (state > 356 && state < 362 )  ||    (state > 367 &&  state < 373 )   || (state > 378 &&  state < 384)  ||
                 (state >389 && state < 394) ||  (state > 395 && state < 397)     ) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 394 || state == 395) {
               id(shunt).turn_off();
@@ -475,18 +420,15 @@ light:
               id(shunt).turn_on();
               id(reverse).turn_off();
             }
-            auto call = id(code).turn_on();
 
             if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
                   (state >= 345 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
               inverse = 1;
             } else {
+              id(code_output).turn_on();
               inverse = 0;
             }
-
-            call.set_publish(false);
-            call.perform();
 
             if (state >= 344 && state <= 348 ) {
               id(shunt).turn_off();
@@ -511,18 +453,15 @@ light:
               id(shunt).turn_on();
               id(reverse).turn_off();
             }
-            auto call = id(code).turn_on();
 
             if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
                  (state >= 344 && state <= 348  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
               inverse = 1;
             } else {
+              id(code_output).turn_on();
               inverse = 0;
             }
-
-            call.set_publish(false);
-            call.perform();
 
             if (state >= 344 && state <= 348 ) {
               id(shunt).turn_off();
@@ -544,11 +483,12 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
 
             if (state == 1 || state == 115 || state == 229 || state == 343 ||
                state == 457 || state == 571 || state == 685 || state == 820 || state == 822 || state == 824 ) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
 
             if (state >799 && state <827) {
@@ -559,54 +499,37 @@ light:
               id(reverse).turn_off();
             }
 
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 914)
               state = 0;
 
-      - strobe:
+      - lambda:
           name: Smart Sync Old Silence
-          colors:
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 975ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 975ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 975ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 975ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 975ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 975ms
-
-            - state: false
-              duration: 10ms
-            - state: true
-              duration: 999ms
-
-            - state: false
-              duration: 250ms
-            - state: true
-              duration: 750ms
+          update_interval: 10ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) state = 0;
+            // 6 cycles: 1 tick off, 98 ticks on (99 each = 594)
+            // Cycle 7: 1 tick off, 100 ticks on (101, ends at 695)
+            // Cycle 8: 25 ticks off, 75 ticks on (100, ends at 795)
+            int pos = state;
+            bool on = true;
+            if (pos < 594) {
+              // Cycles 1-6: off at 0,99,198,297,396,495
+              int cycle_pos = pos % 99;
+              on = (cycle_pos > 0);
+            } else if (pos < 695) {
+              // Cycle 7
+              int cycle_pos = pos - 594;
+              on = (cycle_pos > 0);
+            } else {
+              // Cycle 8
+              int cycle_pos = pos - 695;
+              on = (cycle_pos >= 25);
+            }
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+            state++;
+            if (state >= 795) state = 0;
 
       - lambda:
           name: California Code
@@ -616,12 +539,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 0 || state >20) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 30)
               state = 0;
@@ -634,12 +556,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 0 || state == 11 ) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state <11 && state != 0) {
               id(trigger).turn_off();
@@ -653,31 +574,43 @@ light:
 
       - lambda:
           name: Firecom Whoop
+          update_interval: 250ms
           lambda: |-
-            id(code).turn_on();
-            id(reverse).turn_off();
-            id(trigger).turn_off();
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_off();
+              id(trigger).turn_off();
+            }
 
       - lambda:
           name: Firecom Chime
+          update_interval: 250ms
           lambda: |-
-            id(code).turn_on();
-            id(reverse).turn_off();
-            id(trigger).turn_on();
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_off();
+              id(trigger).turn_on();
+            }
 
       - lambda:
           name: Firecom Pulsed Tone
+          update_interval: 250ms
           lambda: |-
-            id(code).turn_on();
-            id(reverse).turn_on();
-            id(trigger).turn_on();
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_on();
+              id(trigger).turn_on();
+            }
 
       - lambda:
           name: Firecom Steady Tone
+          update_interval: 250ms
           lambda: |-
-            id(code).turn_on();
-            id(reverse).turn_on();
-            id(trigger).turn_off();
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_on();
+              id(trigger).turn_off();
+            }
 
       - lambda:
           name: Pulsed California Code
@@ -687,12 +620,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state > 40 || state % 2 == 0) {
-              call.set_brightness(0);
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 60)
               state = 0;
@@ -705,13 +637,12 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3 && state != 5 && state != 7 &&
-               state != 12 && state != 14 && state != 16 && state != 18) {
-              call.set_brightness(0);
+            if (state == 1 || state == 3 || state == 5 || state == 7 ||
+               state == 12 || state == 14 || state == 16 || state == 18) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 38)
               state = 0;
@@ -724,20 +655,17 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3 && state != 5 && state != 7 &&
-               state != 12 && state != 14 && state != 16 && state != 18 &&
-               state != 23 && state != 25 && state != 27 && state != 29 &&
-               state != 34 && state != 36 && state != 38 && state != 40) {
-              call.set_brightness(0);
+            if (state == 1 || state == 3 || state == 5 || state == 7 ||
+               state == 12 || state == 14 || state == 16 || state == 18 ||
+               state == 23 || state == 25 || state == 27 || state == 29 ||
+               state == 34 || state == 36 || state == 38 || state == 40) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
             }
-
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 60)
               state = 0;
-
 
       - lambda:
           name: Jingle Bells
@@ -747,16 +675,14 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3 && state != 5 &&
-               state != 9 && state != 11 && state != 13 &&
-               state != 17 && state != 19 && state != 21 && state != 23 &&
-               state != 25 ) {
-              call.set_brightness(0);
+            if (state == 1 || state == 3 || state == 5 ||
+               state == 9 || state == 11 || state == 13 ||
+               state == 17 || state == 19 || state == 21 || state == 23 ||
+               state == 25 ) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
             }
-
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 32)
               state = 0;
@@ -769,12 +695,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3 && state != 5) {
-              call.set_brightness(0);
+            if (state == 1 || state == 3 || state == 5) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 8)
               state = 0;
@@ -787,12 +712,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3 && state != 5 && state != 7) {
-              call.set_brightness(0);
+            if (state == 1 || state == 3 || state == 5 || state == 7) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 57)
               state = 0;
@@ -805,16 +729,14 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state != 1 && state != 3) {
-              call.set_brightness(0);
+            if (state == 1 || state == 3) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 8)
               state = 0;
-
 
       - lambda:
           name: Federal Signal Siren
@@ -824,12 +746,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state == 0 || state >12) {
-              call.set_brightness(0);
+            if (state == 0 || state > 12) {
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 24)
               state = 0;
@@ -842,12 +763,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
-            if (state == 0 || state >4) {
-              call.set_brightness(0);
+            if (state == 0 || state > 4) {
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
             }
-            call.set_publish(false);
-            call.perform();
             state += 1;
             if (state == 8)
               state = 0;
@@ -860,14 +780,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 3 || state == 14 || state == 19 || state == 32) {
-              call.set_brightness(100);
+              id(code_output).turn_on();
             } else {
-              call.set_brightness(0);
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 1 || state == 10 || state == 16 || state == 21 || state == 34) {
               id(reverse).turn_on();
@@ -887,10 +804,9 @@ light:
               id(trigger).turn_off();
             }
 
-            auto offcall = id(code).turn_off();
             state += 1;
             if (state == 38)
-              offcall.perform();
+              id(code).turn_off().perform();
 
       - lambda:
           name: Westminster 16 Note 12
@@ -900,14 +816,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 3 || state == 14 || state == 19 || state == 32 || (state >= 38 && state < 62 && state % 2 == 0)) {
-              call.set_brightness(100);
+              id(code_output).turn_on();
             } else {
-              call.set_brightness(0);
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 1 || state == 10 || state == 16 || state == 21 || state == 34 || (state >= 38 && state < 62 && state % 2 == 0)) {
               id(reverse).turn_on();
@@ -927,10 +840,9 @@ light:
               id(trigger).turn_off();
             }
 
-            auto offcall = id(code).turn_off();
             state += 1;
             if (state == 66)
-              offcall.perform();
+              id(code).turn_off().perform();
 
       - lambda:
           name: Westminster
@@ -940,14 +852,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 1 || state == 14) {
-              call.set_brightness(100);
+              id(code_output).turn_on();
             } else {
-              call.set_brightness(0);
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 3 || state == 16) {
               id(reverse).turn_on();
@@ -967,10 +876,9 @@ light:
               id(trigger).turn_off();
             }
 
-            auto offcall = id(code).turn_off();
             state += 1;
             if (state == 20)
-              offcall.perform();
+              id(code).turn_off().perform();
 
       - lambda:
           name: Westminster 12
@@ -980,14 +888,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 1 || state == 14 || (state >= 20 && state < 44 && state % 2 == 0) ) {
-              call.set_brightness(100);
+              id(code_output).turn_on();
             } else {
-              call.set_brightness(0);
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 3 || state == 16 || (state >= 20 && state < 44 && state % 2 == 0) ) {
               id(reverse).turn_on();
@@ -1007,10 +912,9 @@ light:
               id(trigger).turn_off();
             }
 
-            auto offcall = id(code).turn_off();
             state += 1;
             if (state == 46)
-              offcall.perform();
+              id(code).turn_off().perform();
 
       - lambda:
           name: Turkey
@@ -1020,14 +924,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 1 || state == 23 || state == 25 || state == 27 || state == 33) {
-              call.set_brightness(100);
+              id(code_output).turn_on();
             } else {
-              call.set_brightness(0);
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 5 || state == 7 || state == 9 || state == 19 || state == 29) {
               id(reverse).turn_on();
@@ -1047,10 +948,9 @@ light:
               id(trigger).turn_off();
             }
 
-            auto offcall = id(code).turn_off();
             state += 1;
             if (state == 38)
-              offcall.perform();
+              id(code).turn_off().perform();
 
       - lambda:
           name: Ding Dong
@@ -1060,14 +960,11 @@ light:
             if (initial_run) {
               state = 0;
             }
-            auto call = id(code).turn_on();
             if (state == 1 || state == 11) {
-              call.set_brightness(100);
+              id(code_output).turn_on();
             } else {
-              call.set_brightness(0);
+              id(code_output).turn_off();
             }
-            call.set_publish(false);
-            call.perform();
 
             if (state == 3 || state == 13) {
               id(reverse).turn_on();
@@ -1075,10 +972,9 @@ light:
               id(reverse).turn_off();
             }
 
-            auto offcall = id(code).turn_off();
             state += 1;
             if (state == 15)
-              offcall.perform();
+              id(code).turn_off().perform();
 
 globals:
  - id: alarm_active
@@ -1162,49 +1058,6 @@ globals:
      "Turkey",
      "Ding Dong"
    }'
-
-sensor:
-  - platform: wifi_signal
-    name: "$name WiFi Signal"
-    update_interval: 5min
-
-  - platform: uptime
-    name: "$name Uptime"
-    id: uptime_sensor
-    update_interval: 5min
-
-  - platform: pulse_meter
-    pin:
-      number: GPIO36
-      inverted: true
-    name: "Pulse Counter"
-    id: pulse_counter
-    internal: true
-    internal_filter: 20ms
-    internal_filter_mode: PULSE
-    unit_of_measurement: "ms"
-    filters:
-      - lambda: return millis();
-    total:
-      id: pulse_total
-      name: 'Pulse Total'
-
-  - platform: template
-    name: "Number Readout"
-    id: number_readout
-    update_interval: 100ms
-    accuracy_decimals: 0
-    lambda: |-
-      unsigned long now = millis();
-      int current_count = id(pulse_total).state;
-      if ((now - id(pulse_counter).state > 750) && (current_count > 0) ) {
-        // Reset the raw pulse counter for the next number
-        id(pulse_counter).set_total_pulses(0);
-        return current_count;
-      }
-      return {};
-    unit_of_measurement: "pulses"
-
 
 script:
   - id: set_effect

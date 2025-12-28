@@ -30,7 +30,12 @@ substitutions:
   gpio_sda: 'GPIO27'
   # ADC button ladder (uses internal pullup)
   gpio_buttons_adc: 'GPIO32'
+  # Pulse counter (for reading incoming codes)
+  #gpio_code_reader: 'GPIO36'
 
 packages:
   main: !include main.yaml
   buttons: !include buttons_adc.yaml
+  display: !include display_oled.yaml
+  diagnostics: !include diagnostics.yaml
+  #pulse_counter: !include pulse_counter.yaml

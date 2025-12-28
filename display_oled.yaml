@@ -1,0 +1,29 @@
+# OLED Display (SSD1306 128x64)
+# Optional package - include if your device has an I2C OLED display
+#
+# Required substitutions:
+#   gpio_scl: I2C clock pin (e.g., 'GPIO25')
+#   gpio_sda: I2C data pin (e.g., 'GPIO27')
+#
+# Required files:
+#   FreeSans.ttf in the same directory as your config
+
+i2c:
+  frequency: 800kHz
+  scl: ${gpio_scl}
+  sda: ${gpio_sda}
+
+font:
+  - file: 'FreeSans.ttf'
+    id: font1
+    size: 14
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    lambda: |-
+      it.print(0, 0, id(font1), "Fire Sequencer!");
+      it.printf(0, 15, id(font1), "Shunt: %s", id(shunt).state ? "On" : "Off");
+      it.printf(0, 30, id(font1), "Code: %s",  id(code).get_effect_name() != "None" ? "On":  id(code).current_values.is_on() ? "On" : "Off" );
+      it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str());

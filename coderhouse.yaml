@@ -30,3 +30,4 @@ substitutions:
 packages:
   main: !include main.yaml
   buttons: !include buttons_gpio.yaml
+  display: !include display_oled.yaml

@@ -1,0 +1,38 @@
+# Pulse Counter / Code Reader
+# Optional package - include if you want to decode incoming fire alarm codes
+#
+# Required substitutions:
+#   gpio_code_reader: ADC-capable input pin for reading pulses (e.g., 'GPIO36')
+
+sensor:
+  - platform: pulse_meter
+    pin:
+      number: ${gpio_code_reader}
+      inverted: true
+    name: "Pulse Counter"
+    id: pulse_counter
+    internal: true
+    internal_filter: 20ms
+    internal_filter_mode: PULSE
+    unit_of_measurement: "ms"
+    filters:
+      - lambda: return millis();
+    total:
+      id: pulse_total
+      name: 'Pulse Total'
+
+  - platform: template
+    name: "Number Readout"
+    id: number_readout
+    update_interval: 100ms
+    accuracy_decimals: 0
+    lambda: |-
+      unsigned long now = millis();
+      int current_count = id(pulse_total).state;
+      if ((now - id(pulse_counter).state > 750) && (current_count > 0) ) {
+        // Reset the raw pulse counter for the next number
+        id(pulse_counter).set_total_pulses(0);
+        return current_count;
+      }
+      return {};
+    unit_of_measurement: "pulses"

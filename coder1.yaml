@@ -16,7 +16,6 @@ substitutions:
   gpio_zone_invert: 'false'
   gpio_presignal: 'GPIO34'
   gpio_presignal_invert: 'false'
-  gpio_code_reader: 'GPIO36'
   # I2C (for OLED)
   gpio_scl: 'GPIO25'
   gpio_sda: 'GPIO27'
@@ -29,4 +28,5 @@ substitutions:
 packages:
   main: !include main.yaml
   buttons: !include buttons_adc.yaml
+  display: !include display_oled.yaml
   #howe: !include howe_decoder.yaml

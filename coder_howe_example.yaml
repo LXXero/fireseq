@@ -28,8 +28,13 @@ substitutions:
   # Howe decoder inputs (relay dry contacts with internal pullup)
   gpio_howe_oscillator: 'GPIO4'
   gpio_howe_signal: 'GPIO18'
+  # Pulse counter (for reading incoming codes)
+  #gpio_code_reader: 'GPIO36'
 
 packages:
   main: !include main.yaml
   buttons: !include buttons_adc.yaml
+  display: !include display_oled.yaml
+  diagnostics: !include diagnostics.yaml
+  #pulse_counter: !include pulse_counter.yaml
   howe: !include howe_decoder.yaml
