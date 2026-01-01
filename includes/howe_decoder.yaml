@@ -32,18 +32,21 @@ globals:
   - id: howe_current_code
     type: std::string
     initial_value: '""'
-  - id: howe_round_count
-    type: int
-    initial_value: '0'
+  - id: howe_station_counts
+    type: std::map<std::string, int>
+    restore_value: false  # Per-station round counts for round-robin tracking
   - id: howe_in_transmission
     type: bool
     initial_value: 'false'
   - id: howe_last_osc_time
     type: unsigned long
     initial_value: '0'
+  - id: howe_signal_seen
+    type: bool
+    initial_value: 'false'  # Edge-triggered: was signal active since last osc tick?
 
 binary_sensor:
-  # Signal input - for monitoring/debugging only
+  # Signal input - edge detection for reliable mark counting
   - platform: gpio
     id: howe_signal
     name: "Howe Signal"
@@ -53,6 +56,15 @@ binary_sensor:
         input: true
         pullup: true
       inverted: true  # Pulled low when relay closes
+    filters:
+      - delayed_on: 50ms   # Filter glitches <50ms, keep valid pulses
+    on_press:
+      - lambda: |-
+          // Only track edges if oscillator is active (prevents stale signals)
+          unsigned long now = millis();
+          if (now - id(howe_last_osc_time) < 1000) {
+            id(howe_signal_seen) = true;
+          }
 
   # Oscillator input - this is our clock, we sample signal on each tick
   - platform: gpio
@@ -79,17 +91,20 @@ binary_sensor:
 
           id(howe_last_osc_time) = now;
 
-          // Sample signal state from binary sensor
-          bool signal_active = id(howe_signal).state;
+          // For starting: use edge detection (catches first signal even if brief)
+          // For counting: use level detection (filters glitches, matches protocol)
+          bool signal_edge = id(howe_signal_seen);
+          bool signal_level = id(howe_signal).state;
+          id(howe_signal_seen) = false;  // Reset for next interval
 
           // Only start transmission on first actual signal (not just oscillator warmup)
           if (!id(howe_in_transmission)) {
-            if (signal_active) {
+            if (signal_edge || signal_level) {
               id(howe_in_transmission) = true;
               id(howe_current_code) = "";
-              id(howe_round_count) = 0;
               id(howe_digit_counter) = 0;
               id(howe_gap_counter) = 0;
+              id(howe_station_counts).clear();  // Fresh map for this transmission
               ESP_LOGI("howe", "=== Transmission started ===");
             } else {
               // Oscillator running but no signal yet - ignore warmup pulses
@@ -97,7 +112,8 @@ binary_sensor:
             }
           }
 
-          if (signal_active) {
+          // Use edge detection for counting (debounce filter handles glitches)
+          if (signal_edge) {
             // Mark - increment digit counter
 
             // But first, check if we had a gap before this
@@ -119,9 +135,6 @@ binary_sensor:
                   id(howe_current_code) += to_string(id(howe_digit_counter));
                 }
 
-                // Log the completed round
-                id(howe_round_count)++;
-
                 // Parse prefix and station
                 std::string code = id(howe_current_code);
                 std::string prefix = "";
@@ -134,8 +147,12 @@ binary_sensor:
                   prefix = code;
                 }
 
-                ESP_LOGI("howe", "Round %d: [%s] prefix=%s station=%s",
-                         id(howe_round_count), code.c_str(), prefix.c_str(), station.c_str());
+                // Increment per-station round count (handles round-robin interleaving)
+                id(howe_station_counts)[code]++;
+                int round = id(howe_station_counts)[code];
+
+                ESP_LOGI("howe", "[%s] round %d (prefix=%s station=%s)",
+                         code.c_str(), round, prefix.c_str(), station.c_str());
 
                 // Reset for next round
                 id(howe_current_code) = "";
@@ -192,8 +209,6 @@ interval:
 
             // Log final round if we have data
             if (id(howe_current_code).length() > 0) {
-              id(howe_round_count)++;
-
               std::string code = id(howe_current_code);
               std::string prefix = "";
               std::string station = "";
@@ -205,15 +220,25 @@ interval:
                 prefix = code;
               }
 
-              ESP_LOGI("howe", "Round %d: [%s] prefix=%s station=%s",
-                       id(howe_round_count), code.c_str(), prefix.c_str(), station.c_str());
+              // Increment per-station round count
+              id(howe_station_counts)[code]++;
+              int round = id(howe_station_counts)[code];
+
+              ESP_LOGI("howe", "[%s] round %d (prefix=%s station=%s)",
+                       code.c_str(), round, prefix.c_str(), station.c_str());
             }
 
-            ESP_LOGI("howe", "=== Transmission complete: %d rounds ===", id(howe_round_count));
+            // Log transmission summary with all station counts
+            ESP_LOGI("howe", "=== Transmission complete ===");
+            for (auto& kv : id(howe_station_counts)) {
+              ESP_LOGI("howe", "  Station [%s]: %d rounds", kv.first.c_str(), kv.second);
+            }
 
             // Reset state
             id(howe_in_transmission) = false;
             id(howe_digit_counter) = 0;
             id(howe_gap_counter) = 0;
             id(howe_current_code) = "";
+            id(howe_signal_seen) = false;
+            id(howe_station_counts).clear();  // Clear for next transmission
           }
