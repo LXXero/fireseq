@@ -357,6 +357,20 @@ light:
           # Metal gallop rhythm
           pattern: ".  . ..  . ."
 
+      - step_seq:
+          name: SOS
+          output: code_output
+          step_ms: 100
+          # ... --- ... (morse code)
+          pattern: ". . .   .-- .-- .--   . . .       "
+
+      - step_seq:
+          name: XERO
+          output: code_output
+          step_ms: 100
+          # -..- . .-. --- (morse code)
+          pattern: ".-- . . .--   .   . .-- .   .-- .-- .--       "
+
       - march:
           name: Standard March
           output: code_output
@@ -927,7 +941,9 @@ globals:
      "Boots N Cats",
      "Breakbeat",
      "Syncopation",
-     "Gallop"
+     "Gallop",
+     "SOS",
+     "XERO"
    }'
 
  - id: doorbell_effects
