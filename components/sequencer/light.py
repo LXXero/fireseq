@@ -1,0 +1,99 @@
+import esphome.codegen as cg
+import esphome.config_validation as cv
+from esphome.components.light.effects import register_binary_effect
+from esphome.components.output import BinaryOutput
+from esphome.const import CONF_NAME, CONF_OUTPUT
+from . import sequencer_ns
+
+CONF_PATTERN = "pattern"
+CONF_PULSE_MS = "pulse_ms"
+CONF_GAP_MS = "gap_ms"
+CONF_GROUP_GAP_MS = "group_gap_ms"
+CONF_CYCLE_GAP_MS = "cycle_gap_ms"
+CONF_STEP_MS = "step_ms"
+CONF_SHORT_MS = "short_ms"
+CONF_LONG_MS = "long_ms"
+CONF_ON_MS = "on_ms"
+CONF_OFF_MS = "off_ms"
+
+# C++ class references
+FireCodeEffect = sequencer_ns.class_("FireCodeEffect", cg.Component)
+StepSeqEffect = sequencer_ns.class_("StepSeqEffect", cg.Component)
+MarchEffect = sequencer_ns.class_("MarchEffect", cg.Component)
+
+
+# fire_code effect - for digit-based patterns like "4 4" or "3 4 2"
+@register_binary_effect(
+    "fire_code",
+    FireCodeEffect,
+    "Fire Code",
+    {
+        cv.Required(CONF_OUTPUT): cv.use_id(BinaryOutput),
+        cv.Required(CONF_PATTERN): cv.string,
+        cv.Optional(CONF_PULSE_MS, default=250): cv.positive_int,
+        cv.Optional(CONF_GAP_MS): cv.positive_int,  # defaults to pulse_ms
+        cv.Optional(CONF_GROUP_GAP_MS): cv.positive_int,  # defaults to gap_ms * 3
+        cv.Optional(CONF_CYCLE_GAP_MS): cv.positive_int,  # defaults to group_gap_ms * 5
+    },
+)
+async def fire_code_effect_to_code(config, effect_id):
+    var = cg.new_Pvariable(effect_id, config[CONF_NAME])
+    output = await cg.get_variable(config[CONF_OUTPUT])
+    cg.add(var.set_output(output))
+    cg.add(var.set_pattern(config[CONF_PATTERN]))
+
+    pulse_ms = config[CONF_PULSE_MS]
+    gap_ms = config.get(CONF_GAP_MS, pulse_ms)              # default: 1x pulse
+    group_gap_ms = config.get(CONF_GROUP_GAP_MS, pulse_ms * 4)  # default: 4x pulse
+    cycle_gap_ms = config.get(CONF_CYCLE_GAP_MS, 5000)      # default: 5 seconds
+
+    cg.add(var.set_pulse_ms(pulse_ms))
+    cg.add(var.set_gap_ms(gap_ms))
+    cg.add(var.set_group_gap_ms(group_gap_ms))
+    cg.add(var.set_cycle_gap_ms(cycle_gap_ms))
+    return var
+
+
+# step_seq effect - step sequencer patterns
+# '.' = hit (ON), '-' = hold (continue), ' ' = rest (OFF)
+@register_binary_effect(
+    "step_seq",
+    StepSeqEffect,
+    "Step Sequencer",
+    {
+        cv.Required(CONF_OUTPUT): cv.use_id(BinaryOutput),
+        cv.Required(CONF_PATTERN): cv.string,
+        cv.Optional(CONF_STEP_MS, default=66): cv.positive_int,
+    },
+)
+async def step_seq_effect_to_code(config, effect_id):
+    var = cg.new_Pvariable(effect_id, config[CONF_NAME])
+    output = await cg.get_variable(config[CONF_OUTPUT])
+    cg.add(var.set_output(output))
+    cg.add(var.set_pattern(config[CONF_PATTERN]))
+    cg.add(var.set_step_ms(config[CONF_STEP_MS]))
+    return var
+
+
+# march effect - simple on/off toggle
+@register_binary_effect(
+    "march",
+    MarchEffect,
+    "March",
+    {
+        cv.Required(CONF_OUTPUT): cv.use_id(BinaryOutput),
+        cv.Optional(CONF_ON_MS, default=500): cv.positive_int,
+        cv.Optional(CONF_OFF_MS): cv.positive_int,  # defaults to on_ms
+    },
+)
+async def march_effect_to_code(config, effect_id):
+    var = cg.new_Pvariable(effect_id, config[CONF_NAME])
+    output = await cg.get_variable(config[CONF_OUTPUT])
+    cg.add(var.set_output(output))
+
+    on_ms = config[CONF_ON_MS]
+    off_ms = config.get(CONF_OFF_MS, on_ms)
+
+    cg.add(var.set_on_ms(on_ms))
+    cg.add(var.set_off_ms(off_ms))
+    return var

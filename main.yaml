@@ -30,6 +30,14 @@ esp32:
   framework:
     type: esp-idf
 
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [sequencer]
+
+sequencer:
+
 text_sensor:
   - platform: template
     name: "Current Effect"
@@ -252,133 +260,114 @@ light:
           lambda: |-
             id(code_output).turn_off();
 
-      - lambda:
+      - march:
           name: March 20
-          update_interval: 1500ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 1500
 
-      - lambda:
+      - march:
           name: March 30
-          update_interval: 1000ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 1000
 
-      - lambda:
+      - march:
           name: March 60
-          update_interval: 500ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 500
 
-      - lambda:
+      - march:
           name: March 90
-          update_interval: 333ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 333
 
-      - lambda:
+      - march:
           name: March 100
-          update_interval: 300ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 300
 
-      - lambda:
+      - march:
           name: March 120
-          update_interval: 250ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 250
 
-      - lambda:
+      - march:
           name: March 150
-          update_interval: 200ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 200
 
-      - lambda:
+      - march:
           name: March 180
-          update_interval: 166ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 166
 
-      - lambda:
+      - march:
           name: March 200
-          update_interval: 150ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 150
 
-      - lambda:
+      - march:
           name: March 250
-          update_interval: 120ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 120
 
-      - lambda:
+      - march:
           name: March 300 / Steady T4
-          update_interval: 100ms
-          lambda: |-
-            static bool on = false;
-            on = !on;
-            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+          output: code_output
+          on_ms: 100
 
-      - lambda:
+      - step_seq:
           name: March 150 Fun
-          update_interval: 66ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) state = 0;
-            // 0-41: 7 cycles of 200ms on/off (3 ticks each = 198ms ≈ 200ms)
-            // 42-47: 3 cycles of 66ms on/off (1 tick each)
-            if (state < 42) {
-              // 200ms phase: 3 ticks on, 3 ticks off
-              if (state % 6 < 3) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
-            } else {
-              // 66ms phase: 1 tick on, 1 tick off
-              if (state % 2 == 0) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
-            }
-            state++;
-            if (state >= 48) state = 0;
+          output: code_output
+          step_ms: 66
+          # 7 slow cycles (3 on, 3 off) + 3 fast cycles (1 on, 1 off)
+          pattern: ".--   .--   .--   .--   .--   .--   .--   . . . "
 
-      - lambda:
+      - step_seq:
+          name: Four On The Floor
+          output: code_output
+          step_ms: 125
+          # Classic disco/house - steady quarter notes
+          pattern: ".   .   .   .   "
+
+      - step_seq:
+          name: Boots N Cats
+          output: code_output
+          step_ms: 100
+          # boots-n-cats-n-boots-n-cats
+          pattern: ".-- . .-- . "
+
+      - step_seq:
+          name: Breakbeat
+          output: code_output
+          step_ms: 80
+          # Amen break style
+          pattern: ".  .. .  . .. . "
+
+      - step_seq:
+          name: Syncopation
+          output: code_output
+          step_ms: 100
+          # Off-beat funk
+          pattern: ". ..  . . ..  . "
+
+      - step_seq:
+          name: Gallop
+          output: code_output
+          step_ms: 80
+          # Metal gallop rhythm
+          pattern: ".  . ..  . ."
+
+      - march:
           name: Standard March
-          update_interval: 50ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) state = 0;
-            // 150ms on (3 ticks), 400ms off (8 ticks) = 11 ticks total
-            if (state < 3) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
-            state++;
-            if (state >= 11) state = 0;
+          output: code_output
+          on_ms: 150
+          off_ms: 400
 
-      - lambda:
+      - march:
           name: PreSignal
-          update_interval: 100ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) state = 0;
-            // 100ms on (1 tick), 3000ms off (30 ticks) = 31 ticks total
-            if (state == 0) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
-            state++;
-            if (state >= 31) state = 0;
+          output: code_output
+          on_ms: 100
+          off_ms: 3000
 
       - lambda:
           name: Shart Sync
@@ -531,22 +520,11 @@ light:
             state++;
             if (state >= 795) state = 0;
 
-      - lambda:
+      - march:
           name: California Code
-          update_interval: 500ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 0 || state >20) {
-              id(code_output).turn_off();
-            } else {
-              id(code_output).turn_on();
-            }
-            state += 1;
-            if (state == 30)
-              state = 0;
+          output: code_output
+          on_ms: 10000
+          off_ms: 5000
 
       - lambda:
           name: Firecom
@@ -612,165 +590,64 @@ light:
               id(trigger).turn_off();
             }
 
-      - lambda:
+      - fire_code:
           name: Pulsed California Code
-          update_interval: 250ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state > 40 || state % 2 == 0) {
-              id(code_output).turn_off();
-            } else {
-              id(code_output).turn_on();
-            }
-            state += 1;
-            if (state == 60)
-              state = 0;
+          output: code_output
+          pattern: "20"
+          pulse_ms: 250
+          cycle_gap_ms: 5000
 
-      - lambda:
+      - fire_code:
           name: 4-4
-          update_interval: 250ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 1 || state == 3 || state == 5 || state == 7 ||
-               state == 12 || state == 14 || state == 16 || state == 18) {
-              id(code_output).turn_on();
-            } else {
-              id(code_output).turn_off();
-            }
-            state += 1;
-            if (state == 38)
-              state = 0;
+          output: code_output
+          pattern: "4 4"
+          pulse_ms: 250
 
-      - lambda:
+      - fire_code:
           name: 4-4-4-4
-          update_interval: 250ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 1 || state == 3 || state == 5 || state == 7 ||
-               state == 12 || state == 14 || state == 16 || state == 18 ||
-               state == 23 || state == 25 || state == 27 || state == 29 ||
-               state == 34 || state == 36 || state == 38 || state == 40) {
-              id(code_output).turn_on();
-            } else {
-              id(code_output).turn_off();
-            }
-            state += 1;
-            if (state == 60)
-              state = 0;
+          output: code_output
+          pattern: "4 4 4 4"
+          pulse_ms: 250
 
-      - lambda:
+      - fire_code:
           name: Jingle Bells
-          update_interval: 250ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 1 || state == 3 || state == 5 ||
-               state == 9 || state == 11 || state == 13 ||
-               state == 17 || state == 19 || state == 21 || state == 23 ||
-               state == 25 ) {
-              id(code_output).turn_on();
-            } else {
-              id(code_output).turn_off();
-            }
-            state += 1;
-            if (state == 32)
-              state = 0;
+          output: code_output
+          pattern: "3 3 5"
+          pulse_ms: 250
+          group_gap_ms: 750
+          cycle_gap_ms: 1750
 
-      - lambda:
+      - fire_code:
           name: Temporal 3
-          update_interval: 500ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 1 || state == 3 || state == 5) {
-              id(code_output).turn_on();
-            } else {
-              id(code_output).turn_off();
-            }
-            state += 1;
-            if (state == 8)
-              state = 0;
+          output: code_output
+          pattern: "3"
+          pulse_ms: 500
+          cycle_gap_ms: 1500
 
-      - lambda:
+      - fire_code:
           name: Temporal 4
-          update_interval: 100ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 1 || state == 3 || state == 5 || state == 7) {
-              id(code_output).turn_on();
-            } else {
-              id(code_output).turn_off();
-            }
-            state += 1;
-            if (state == 57)
-              state = 0;
+          output: code_output
+          pattern: "4"
+          pulse_ms: 100
 
-      - lambda:
+      - fire_code:
           name: Temporal 2
-          update_interval: 115ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 1 || state == 3) {
-              id(code_output).turn_on();
-            } else {
-              id(code_output).turn_off();
-            }
-            state += 1;
-            if (state == 8)
-              state = 0;
+          output: code_output
+          pattern: "2"
+          pulse_ms: 115
+          cycle_gap_ms: 575
 
-      - lambda:
+      - march:
           name: Federal Signal Siren
-          update_interval: 500ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 0 || state > 12) {
-              id(code_output).turn_off();
-            } else {
-              id(code_output).turn_on();
-            }
-            state += 1;
-            if (state == 24)
-              state = 0;
+          output: code_output
+          on_ms: 6000
+          off_ms: 6000
 
-      - lambda:
+      - march:
           name: Fast Wail
-          update_interval: 500ms
-          lambda: |-
-            static int state = 0;
-            if (initial_run) {
-              state = 0;
-            }
-            if (state == 0 || state > 4) {
-              id(code_output).turn_off();
-            } else {
-              id(code_output).turn_on();
-            }
-            state += 1;
-            if (state == 8)
-              state = 0;
+          output: code_output
+          on_ms: 2000
+          off_ms: 2000
 
       - lambda:
           name: Westminster 16 Note
@@ -1045,7 +922,12 @@ globals:
      "Firecom Chime",
      "Firecom Whoop",
      "Firecom Pulsed Tone",
-     "Firecom Steady Tone"
+     "Firecom Steady Tone",
+     "Four On The Floor",
+     "Boots N Cats",
+     "Breakbeat",
+     "Syncopation",
+     "Gallop"
    }'
 
  - id: doorbell_effects

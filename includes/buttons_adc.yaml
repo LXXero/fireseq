@@ -94,7 +94,7 @@ binary_sensor:
     name: "March Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.75 && v <= 2.04);
+      return (v >= 1.89 && v <= 2.10);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -107,7 +107,7 @@ binary_sensor:
     name: "Code Up"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.45 && v <= 1.74);
+      return (v >= 1.60 && v <= 1.88);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -120,7 +120,7 @@ binary_sensor:
     name: "Code Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.15 && v <= 1.44);
+      return (v >= 1.30 && v <= 1.59);
     filters:
       - delayed_on: 10ms
     on_press:
