@@ -41,25 +41,18 @@ globals:
   - id: howe_last_osc_time
     type: unsigned long
     initial_value: '0'
-  - id: howe_signal_state
-    type: bool
-    initial_value: 'false'
 
 binary_sensor:
-  # Signal input - directly tracks relay state
+  # Signal input - for monitoring/debugging only
   - platform: gpio
     id: howe_signal
     name: "Howe Signal"
-    internal: true
     pin:
       number: ${gpio_howe_signal}
       mode:
         input: true
         pullup: true
       inverted: true  # Pulled low when relay closes
-    on_state:
-      - lambda: |-
-          id(howe_signal_state) = x;
 
   # Oscillator input - this is our clock, we sample signal on each tick
   - platform: gpio
@@ -77,20 +70,32 @@ binary_sensor:
     on_press:
       - lambda: |-
           unsigned long now = millis();
-          id(howe_last_osc_time) = now;
+          unsigned long delta = now - id(howe_last_osc_time);
 
-          // Start of transmission
-          if (!id(howe_in_transmission)) {
-            id(howe_in_transmission) = true;
-            id(howe_current_code) = "";
-            id(howe_round_count) = 0;
-            id(howe_digit_counter) = 0;
-            id(howe_gap_counter) = 0;
-            ESP_LOGI("howe", "=== Transmission started ===");
+          // Log oscillator timing (only if reasonable interval)
+          if (delta > 10 && delta < 2000) {
+            ESP_LOGD("howe", "Osc tick: %lums (%.1f Hz)", delta, 1000.0 / delta);
           }
 
-          // Sample signal state on this oscillator tick
-          bool signal_active = id(howe_signal_state);
+          id(howe_last_osc_time) = now;
+
+          // Sample signal state from binary sensor
+          bool signal_active = id(howe_signal).state;
+
+          // Only start transmission on first actual signal (not just oscillator warmup)
+          if (!id(howe_in_transmission)) {
+            if (signal_active) {
+              id(howe_in_transmission) = true;
+              id(howe_current_code) = "";
+              id(howe_round_count) = 0;
+              id(howe_digit_counter) = 0;
+              id(howe_gap_counter) = 0;
+              ESP_LOGI("howe", "=== Transmission started ===");
+            } else {
+              // Oscillator running but no signal yet - ignore warmup pulses
+              return;
+            }
+          }
 
           if (signal_active) {
             // Mark - increment digit counter
@@ -167,53 +172,48 @@ binary_sensor:
             ESP_LOGV("howe", "Space: gap_counter=%d", id(howe_gap_counter));
           }
 
-# Timeout sensor - detects end of transmission when oscillator stops
-sensor:
-  - platform: template
-    id: howe_timeout_check
-    name: "Howe Decoder Status"
-    update_interval: 250ms
-    lambda: |-
-      unsigned long now = millis();
-      unsigned long silence = now - id(howe_last_osc_time);
+# Timeout check - detects end of transmission when oscillator stops
+interval:
+  - interval: 250ms
+    then:
+      - lambda: |-
+          unsigned long now = millis();
+          unsigned long silence = now - id(howe_last_osc_time);
 
-      // If oscillator has been quiet for >2 seconds, transmission is over
-      if (id(howe_in_transmission) && silence > 2000) {
-        // Record any pending digit
-        if (id(howe_digit_counter) > 0) {
-          if (id(howe_current_code).length() > 0) {
-            id(howe_current_code) += "-";
+          // If oscillator has been quiet for >2 seconds, transmission is over
+          if (id(howe_in_transmission) && silence > 2000) {
+            // Record any pending digit
+            if (id(howe_digit_counter) > 0) {
+              if (id(howe_current_code).length() > 0) {
+                id(howe_current_code) += "-";
+              }
+              id(howe_current_code) += to_string(id(howe_digit_counter));
+            }
+
+            // Log final round if we have data
+            if (id(howe_current_code).length() > 0) {
+              id(howe_round_count)++;
+
+              std::string code = id(howe_current_code);
+              std::string prefix = "";
+              std::string station = "";
+              size_t first_dash = code.find('-');
+              if (first_dash != std::string::npos) {
+                prefix = code.substr(0, first_dash);
+                station = code.substr(first_dash + 1);
+              } else {
+                prefix = code;
+              }
+
+              ESP_LOGI("howe", "Round %d: [%s] prefix=%s station=%s",
+                       id(howe_round_count), code.c_str(), prefix.c_str(), station.c_str());
+            }
+
+            ESP_LOGI("howe", "=== Transmission complete: %d rounds ===", id(howe_round_count));
+
+            // Reset state
+            id(howe_in_transmission) = false;
+            id(howe_digit_counter) = 0;
+            id(howe_gap_counter) = 0;
+            id(howe_current_code) = "";
           }
-          id(howe_current_code) += to_string(id(howe_digit_counter));
-        }
-
-        // Log final round if we have data
-        if (id(howe_current_code).length() > 0) {
-          id(howe_round_count)++;
-
-          std::string code = id(howe_current_code);
-          std::string prefix = "";
-          std::string station = "";
-          size_t first_dash = code.find('-');
-          if (first_dash != std::string::npos) {
-            prefix = code.substr(0, first_dash);
-            station = code.substr(first_dash + 1);
-          } else {
-            prefix = code;
-          }
-
-          ESP_LOGI("howe", "Round %d: [%s] prefix=%s station=%s",
-                   id(howe_round_count), code.c_str(), prefix.c_str(), station.c_str());
-        }
-
-        ESP_LOGI("howe", "=== Transmission complete: %d rounds ===", id(howe_round_count));
-
-        // Reset state
-        id(howe_in_transmission) = false;
-        id(howe_digit_counter) = 0;
-        id(howe_gap_counter) = 0;
-        id(howe_current_code) = "";
-      }
-
-      // Return 1 if in transmission, 0 if idle
-      return id(howe_in_transmission) ? 1.0 : 0.0;
