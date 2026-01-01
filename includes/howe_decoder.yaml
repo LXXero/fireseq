@@ -124,10 +124,10 @@ binary_sensor:
               //   2 gaps = 1 blank
               //   3 gaps = 2 blanks
               //   N gaps = (N-1) blanks
-              //   6+ gaps = round separator
+              //   4+ gaps = round separator
 
-              if (id(howe_gap_counter) >= 6) {
-                // Long gap = round complete
+              if (id(howe_gap_counter) >= 4) {
+                // Long gap = round complete (4+ gaps = round separator)
                 if (id(howe_digit_counter) > 0) {
                   if (id(howe_current_code).length() > 0) {
                     id(howe_current_code) += "-";
@@ -172,6 +172,76 @@ binary_sensor:
                 for (int i = 0; i < num_blanks; i++) {
                   id(howe_current_code) += "-X";
                   ESP_LOGD("howe", "Blank digit");
+                }
+
+                // Check if code exceeds max length (prefix + 4 digits = 5 parts)
+                // Count dashes to determine number of parts
+                int dash_count = 0;
+                for (char c : id(howe_current_code)) {
+                  if (c == '-') dash_count++;
+                }
+                if (dash_count >= 5) {
+                  // Code too long - check for trailing X-X (inter-station gap)
+                  std::string full_code = id(howe_current_code);
+
+                  // Count trailing X's
+                  int trailing_x = 0;
+                  for (int i = full_code.length() - 1; i >= 0; i--) {
+                    if (full_code[i] == 'X') {
+                      trailing_x++;
+                    } else if (full_code[i] == '-') {
+                      // Skip dashes between X's
+                      continue;
+                    } else {
+                      break;
+                    }
+                  }
+
+                  if (trailing_x >= 2) {
+                    // Found inter-station gap (2+ trailing X's)
+                    // Split before the trailing X's
+                    ESP_LOGW("howe", "Code exceeded max length with trailing gap, forcing round boundary");
+
+                    // Find where trailing X's start (find last non-X before them)
+                    size_t split_pos = full_code.length();
+                    int x_count = 0;
+                    for (int i = full_code.length() - 1; i >= 0; i--) {
+                      if (full_code[i] == 'X') {
+                        x_count++;
+                      } else if (full_code[i] == '-') {
+                        continue;
+                      } else {
+                        // Found last non-X, split after this digit and its dash
+                        split_pos = i + 1;
+                        break;
+                      }
+                    }
+
+                    std::string code = full_code.substr(0, split_pos);
+                    // Remove trailing dash if present
+                    if (code.length() > 0 && code[code.length() - 1] == '-') {
+                      code = code.substr(0, code.length() - 1);
+                    }
+
+                    // Parse and log the completed code
+                    std::string prefix = "";
+                    std::string station = "";
+                    size_t first_dash = code.find('-');
+                    if (first_dash != std::string::npos) {
+                      prefix = code.substr(0, first_dash);
+                      station = code.substr(first_dash + 1);
+                    } else {
+                      prefix = code;
+                    }
+
+                    id(howe_station_counts)[code]++;
+                    int round = id(howe_station_counts)[code];
+                    ESP_LOGI("howe", "[%s] round %d (prefix=%s station=%s)",
+                             code.c_str(), round, prefix.c_str(), station.c_str());
+
+                    // Reset - current digit being counted is next station's prefix
+                    id(howe_current_code) = "";
+                  }
                 }
               }
 
