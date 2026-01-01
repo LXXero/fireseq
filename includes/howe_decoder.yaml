@@ -6,20 +6,35 @@
 #   gpio_howe_signal: GPIO for signal line input
 #
 # Hardware setup:
-#   - Wire relay contacts to pull GPIO low when closed (use internal pullup)
-#   - Oscillator: timer relay that pulses at constant rate during transmission
+#   - IMPORTANT: Use PC817 optocouplers for isolation from 125VDC system
+#     (without isolation, EMI from pulsing relays causes chaos - USB dropouts,
+#     random device activation, etc. 125VDC pulses are no joke)
+#   - Wire optocoupler outputs to pull GPIO low when active (use internal pullup)
+#   - Oscillator: timer relay that pulses at ~1.9Hz during transmission
 #   - Signal: pulses in sync with oscillator for "marks", silent for "spaces"
 #
-# Decoding logic:
-#   - Each oscillator tick = one timing slot
-#   - Signal during tick = mark, increment digit counter
-#   - No signal for 1 tick = digit separator, record digit
-#   - No signal for 2 ticks = blank digit (represented as "0" or "X")
-#   - No signal for many ticks = round complete
-#   - Oscillator stops = transmission complete
-#   - First digit of each round = prefix (alarm type)
+# Decoding strategy:
+#   - Edge detection: signal rising edge sets flag, oscillator tick reads & clears it
+#   - 50ms debounce filter on signal to reject glitches
+#   - Only track signal edges when oscillator active (within 1 second)
 #
-# Output: Serial/log with decoded codes, prefixes, timestamps
+# Gap logic (spaces between marks):
+#   - 1 gap = digit separator, record accumulated mark count as digit
+#   - 2 gaps = 1 blank digit (X)
+#   - 3 gaps = 2 blank digits (X-X)
+#   - 4+ gaps = round complete, log station code
+#
+# Round-robin support (multiple stations interleaving):
+#   - Per-station round tracking via std::map
+#   - Max-length fallback: if code exceeds 5 parts (prefix + 4 digits)
+#     and ends with 2+ trailing X's, force round boundary
+#   - Handles short inter-station gaps that don't hit 4-gap threshold
+#
+# Station code format: prefix-digit-digit-digit-digit
+#   - Prefix indicates alarm type (1=watchman/fire, 2=fire, 3=supervisory, etc.)
+#   - 5 rounds = alarm, 1 round = reset (typically)
+#
+# Output: Log with decoded codes, round counts per station, transmission summary
 
 globals:
   # Decoder state
