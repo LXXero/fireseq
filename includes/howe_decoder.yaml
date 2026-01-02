@@ -1,3 +1,7 @@
+# Include station database (optional, but pulled in automatically)
+packages:
+  stations: !include howe_stations.yaml
+
 # Howe Transmitter Decoder
 # Decodes pulse codes from Autocall-Howe fire alarm transmitters
 #
@@ -60,6 +64,64 @@ globals:
     type: bool
     initial_value: 'false'  # Edge-triggered: was signal active since last osc tick?
 
+  # Station database (optional - for enriched logging)
+  # Keyed by station ID WITHOUT prefix (e.g., "1-4-5" not "2-1-4-5")
+  - id: station_names
+    type: std::map<std::string, std::string>
+    restore_value: false
+  - id: station_locations
+    type: std::map<std::string, std::string>
+    restore_value: false
+  - id: station_types
+    type: std::map<std::string, std::string>
+    restore_value: false
+  - id: station_prefix_overrides
+    type: std::map<std::string, std::string>
+    restore_value: false
+
+  # Track presignal count when general_alarm first occurred for each station
+  # -1 = no general alarm seen, >= 0 = presignal count at time of general alarm
+  - id: station_presignal_at_general
+    type: std::map<std::string, int>
+    restore_value: false
+
+  # Station state tracking (runtime map, populated from persistent string on boot)
+  # Maps station_id (without prefix) -> state enum value
+  # State values: 0=UNKNOWN, 1=CLEAR, 2=PRESIGNAL, 3=GENERAL_ALARM, 4=FIRE, 5=WATERFLOW, 6=WATCHMAN
+  - id: station_states
+    type: std::map<std::string, int>
+    restore_value: false
+
+  # Serialized station states for persistence across reboots
+  # Format: "SSSS...N,SSSS...N,..." where S=station digit, N=state (0-6)
+  # Example: "23342,9X524,XX251" means:
+  #   2334 + state 2 (PRESIGNAL), 9X52 + state 4 (FIRE), XX25 + state 1 (CLEAR)
+  # Station digits reconstruct with dashes: 2334 -> 2-3-3-4
+  - id: station_states_str
+    type: std::string
+    restore_value: true
+    initial_value: '""'
+
+  # Track last seen time for continuous stations (station_id -> millis timestamp)
+  - id: continuous_last_seen
+    type: std::map<std::string, unsigned long>
+    restore_value: false
+
+  # Track rounds since each station last transmitted (for interim summary detection)
+  - id: rounds_since_seen
+    type: std::map<std::string, int>
+    restore_value: false
+
+  # Track which stations have already been interim-summarized (to avoid duplicates)
+  - id: interim_summarized
+    type: std::set<std::string>
+    restore_value: false
+
+  # Stations pending interim summary (detected in oscillator, processed in interval)
+  - id: pending_interim_summary
+    type: std::set<std::string>
+    restore_value: false
+
 binary_sensor:
   # Signal input - edge detection for reliable mark counting
   - platform: gpio
@@ -112,6 +174,149 @@ binary_sensor:
           bool signal_level = id(howe_signal).state;
           id(howe_signal_seen) = false;  // Reset for next interval
 
+          // ===== HELPER: Get mode for station type and prefix =====
+          auto get_default_mode = [](const std::string& type, int prefix) -> std::string {
+            if (type == "bj_combo") {
+              if (prefix == 1) return "watchman";
+              if (prefix == 2) return "fire";
+            } else if (type == "bj_combo_presignal") {
+              if (prefix == 1) return "watchman";
+              if (prefix == 2) return "presignal";
+              if (prefix == 3) return "general_alarm";
+            } else if (type == "bj_fire") {
+              if (prefix == 1 || prefix == 2) return "fire";
+            } else if (type == "b_combo") {
+              if (prefix == 1) return "fire";
+              if (prefix == 2) return "watchman";
+            } else if (type == "b_fire") {
+              if (prefix == 1) return "fire";
+            } else if (type == "b_fire_presignal") {
+              if (prefix == 2) return "presignal";
+              if (prefix == 3) return "general_alarm";
+            } else if (type == "waterflow") {
+              if (prefix == 3) return "waterflow";
+            } else if (type == "v_station") {
+              if (prefix == 5) return "v_alarm";
+              if (prefix == 6) return "v_reset";
+            } else if (type == "continuous") {
+              return "continuous";
+            }
+            return "unknown";
+          };
+
+          // ===== HELPER: Interpret round count based on mode =====
+          auto interpret_status = [](const std::string& mode, int rounds) -> std::string {
+            if (mode == "fire" || mode == "waterflow") {
+              if (rounds == 5) return "ALARM";
+              if (rounds == 1) return "RESET";
+              if (rounds == 6) return "ALARM+RESET";
+              return "ACTIVE";  // Still transmitting
+            } else if (mode == "presignal") {
+              // Presignal uses same 5/1/6 logic but different label
+              if (rounds == 5) return "PRESIGNAL";
+              if (rounds == 1) return "RESET";
+              if (rounds == 6) return "PRESIGNAL+RESET";
+              return "ACTIVE";
+            } else if (mode == "general_alarm") {
+              // General alarm takes precedence, any count = alarm, no reset from this prefix
+              return "GENERAL ALARM";
+            } else if (mode == "watchman") {
+              return "WATCHMAN";
+            } else if (mode == "v_alarm") {
+              return "ALARM";
+            } else if (mode == "v_reset") {
+              return "RESET";
+            } else if (mode == "continuous") {
+              return "CONTINUOUS";
+            }
+            return "";
+          };
+
+          // ===== HELPER: Log round with station info =====
+          auto log_round = [&](const std::string& code, const std::string& station_id, int prefix, int round) {
+            // Look up station in database
+            std::string name = id(station_names).count(station_id) ? id(station_names)[station_id] : "";
+            std::string type = id(station_types).count(station_id) ? id(station_types)[station_id] : "";
+
+            // Check for prefix override
+            std::string override_key = station_id + ":" + std::to_string(prefix);
+            std::string mode;
+            if (id(station_prefix_overrides).count(override_key)) {
+              mode = id(station_prefix_overrides)[override_key];
+            } else if (!type.empty()) {
+              mode = get_default_mode(type, prefix);
+            } else {
+              mode = "unknown";
+            }
+
+            // Track presignal count when general_alarm first occurs for this station
+            if (mode == "general_alarm" && !id(station_presignal_at_general).count(station_id)) {
+              // Look up current presignal count for this station
+              std::string presignal_code = "2-" + station_id;
+              int presignal_count = 0;
+              if (id(howe_station_counts).count(presignal_code)) {
+                presignal_count = id(howe_station_counts)[presignal_code];
+              }
+              id(station_presignal_at_general)[station_id] = presignal_count;
+              ESP_LOGD("howe", "  TRACK: GA fired, presignal_code=%s count=%d", presignal_code.c_str(), presignal_count);
+            }
+
+            // Continuous station handling: b_combo or b_fire with prefix 1 = continuous fire
+            bool is_continuous = (type == "b_combo" || type == "b_fire") && prefix == 1;
+
+            // Interpret status from round count (continuous stations always show ALARM)
+            std::string status = is_continuous ? "ALARM" : interpret_status(mode, round);
+
+            // Always show raw code info, add enriched data if available
+            if (!name.empty()) {
+              // Known station: [2-1-4-5] round 5 (prefix=2 station=1-4-5) Lobby Station (fire) ALARM
+              ESP_LOGI("howe", "[%s] round %d (prefix=%d station=%s) %s (%s) %s",
+                       code.c_str(), round, prefix, station_id.c_str(),
+                       name.c_str(), mode.c_str(), status.c_str());
+            } else {
+              // Unknown station: [2-1-4-5] round %d (prefix=%d station=%s)
+              ESP_LOGI("howe", "[%s] round %d (prefix=%d station=%s)",
+                       code.c_str(), round, prefix, station_id.c_str());
+            }
+
+            // Continuous station: immediately set FIRE on first round, update last_seen timestamp
+            if (is_continuous) {
+              const int STATE_FIRE = 4;
+              id(continuous_last_seen)[station_id] = millis();
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : 0;
+              if (prior_state != STATE_FIRE) {
+                ESP_LOGI("howe", "  STATE: %s: CONTINUOUS FIRE (immediate)", station_id.c_str());
+                id(station_states)[station_id] = STATE_FIRE;
+              }
+            }
+
+            // Track rounds since each station transmitted (for interim summary detection)
+            // Increment count for ALL tracked stations, then reset current station to 0
+            for (auto& kv : id(rounds_since_seen)) {
+              kv.second++;
+            }
+            id(rounds_since_seen)[station_id] = 0;
+
+            // If station was previously interim-summarized but is transmitting again, remove from set
+            id(interim_summarized).erase(station_id);
+
+            // Detect stations needing interim summary: any station that missed a full rotation
+            // This includes continuous stations that stopped while others keep running
+            int active_count = id(rounds_since_seen).size();
+            if (active_count >= 2) {
+              for (const auto& rs : id(rounds_since_seen)) {
+                std::string sid = rs.first;
+                int missed = rs.second;
+
+                // Skip if already summarized or hasn't missed full rotation
+                if (id(interim_summarized).count(sid) || missed < active_count) continue;
+
+                // Queue for interim summary (processed in interval lambda)
+                id(pending_interim_summary).insert(sid);
+              }
+            }
+          };
+
           // Only start transmission on first actual signal (not just oscillator warmup)
           if (!id(howe_in_transmission)) {
             if (signal_edge || signal_level) {
@@ -120,6 +325,10 @@ binary_sensor:
               id(howe_digit_counter) = 0;
               id(howe_gap_counter) = 0;
               id(howe_station_counts).clear();  // Fresh map for this transmission
+              id(station_presignal_at_general).clear();  // Clear general alarm tracking
+              id(rounds_since_seen).clear();  // Fresh tracking for interim summaries
+              id(interim_summarized).clear();  // Reset interim summary tracking
+              id(pending_interim_summary).clear();  // Clear pending interim queue
               ESP_LOGI("howe", "=== Transmission started ===");
             } else {
               // Oscillator running but no signal yet - ignore warmup pulses
@@ -150,24 +359,22 @@ binary_sensor:
                   id(howe_current_code) += to_string(id(howe_digit_counter));
                 }
 
-                // Parse prefix and station
+                // Parse prefix and station_id
                 std::string code = id(howe_current_code);
-                std::string prefix = "";
-                std::string station = "";
+                int prefix_num = 0;
+                std::string station_id = "";
                 size_t first_dash = code.find('-');
                 if (first_dash != std::string::npos) {
-                  prefix = code.substr(0, first_dash);
-                  station = code.substr(first_dash + 1);
-                } else {
-                  prefix = code;
+                  prefix_num = std::stoi(code.substr(0, first_dash));
+                  station_id = code.substr(first_dash + 1);
                 }
 
                 // Increment per-station round count (handles round-robin interleaving)
                 id(howe_station_counts)[code]++;
                 int round = id(howe_station_counts)[code];
 
-                ESP_LOGI("howe", "[%s] round %d (prefix=%s station=%s)",
-                         code.c_str(), round, prefix.c_str(), station.c_str());
+                // Log with station lookup
+                log_round(code, station_id, prefix_num, round);
 
                 // Reset for next round
                 id(howe_current_code) = "";
@@ -238,21 +445,20 @@ binary_sensor:
                       code = code.substr(0, code.length() - 1);
                     }
 
-                    // Parse and log the completed code
-                    std::string prefix = "";
-                    std::string station = "";
+                    // Parse prefix and station_id
+                    int prefix_num = 0;
+                    std::string station_id = "";
                     size_t first_dash = code.find('-');
                     if (first_dash != std::string::npos) {
-                      prefix = code.substr(0, first_dash);
-                      station = code.substr(first_dash + 1);
-                    } else {
-                      prefix = code;
+                      prefix_num = std::stoi(code.substr(0, first_dash));
+                      station_id = code.substr(first_dash + 1);
                     }
 
                     id(howe_station_counts)[code]++;
                     int round = id(howe_station_counts)[code];
-                    ESP_LOGI("howe", "[%s] round %d (prefix=%s station=%s)",
-                             code.c_str(), round, prefix.c_str(), station.c_str());
+
+                    // Log with station lookup
+                    log_round(code, station_id, prefix_num, round);
 
                     // Reset - current digit being counted is next station's prefix
                     id(howe_current_code) = "";
@@ -282,6 +488,280 @@ interval:
           unsigned long now = millis();
           unsigned long silence = now - id(howe_last_osc_time);
 
+          // Station state constants (used by both interim and final summary)
+          const int STATE_UNKNOWN = 0;
+          const int STATE_CLEAR = 1;
+          const int STATE_PRESIGNAL = 2;
+          const int STATE_GENERAL_ALARM = 3;
+          const int STATE_FIRE = 4;
+          const int STATE_WATERFLOW = 5;
+          const int STATE_WATCHMAN = 6;
+
+          auto state_name = [](int state) -> std::string {
+            switch (state) {
+              case 0: return "UNKNOWN";
+              case 1: return "CLEAR";
+              case 2: return "PRESIGNAL";
+              case 3: return "GENERAL_ALARM";
+              case 4: return "FIRE";
+              case 5: return "WATERFLOW";
+              case 6: return "WATCHMAN";
+              default: return "INVALID";
+            }
+          };
+
+          auto strip_dashes = [](const std::string& s) -> std::string {
+            std::string out;
+            for (char c : s) if (c != '-') out += c;
+            return out;
+          };
+
+          auto save_states = [&]() {
+            std::string out;
+            for (const auto& kv : id(station_states)) {
+              if (!out.empty()) out += ',';
+              out += strip_dashes(kv.first);
+              out += ('0' + kv.second);
+            }
+            id(station_states_str) = out;
+          };
+
+          // ===== HELPER: Summarize a single station (used for both interim and final) =====
+          auto summarize_station = [&](const std::string& target_station_id, bool is_interim) {
+            std::string name = id(station_names).count(target_station_id) ? id(station_names)[target_station_id] : "";
+            std::string type = id(station_types).count(target_station_id) ? id(station_types)[target_station_id] : "";
+
+            // Collect presignal/general rounds for combo handling
+            int presignal_rounds = 0;
+            int general_rounds = 0;
+            std::vector<std::pair<std::string, int>> codes_for_station;  // code -> rounds
+
+            for (const auto& kv : id(howe_station_counts)) {
+              std::string code = kv.first;
+              int rounds = kv.second;
+              size_t first_dash = code.find('-');
+              if (first_dash == std::string::npos) continue;
+              std::string sid = code.substr(first_dash + 1);
+              if (sid != target_station_id) continue;
+
+              int prefix = std::stoi(code.substr(0, first_dash));
+              codes_for_station.push_back({code, rounds});
+
+              if (type == "bj_combo_presignal" || type == "b_fire_presignal") {
+                if (prefix == 2) presignal_rounds = rounds;
+                if (prefix == 3) general_rounds = rounds;
+              }
+            }
+
+            if (codes_for_station.empty()) return;
+
+            if (is_interim) {
+              ESP_LOGI("howe", "=== Interim summary ===");
+            }
+
+            // Handle continuous stations (b_combo/b_fire with prefix 1): if interim, they stopped -> CLEAR
+            if ((type == "b_combo" || type == "b_fire") && is_interim) {
+              // Find total rounds for logging
+              int total_rounds = 0;
+              std::string code_for_log;
+              for (const auto& cp : codes_for_station) {
+                size_t dash = cp.first.find('-');
+                int pfx = std::stoi(cp.first.substr(0, dash));
+                if (pfx == 1) {  // Fire prefix for b_combo/b_fire
+                  total_rounds = cp.second;
+                  code_for_log = cp.first;
+                  break;
+                }
+              }
+              ESP_LOGI("howe", "  [%s] %s: %d rounds (continuous stopped)", code_for_log.c_str(), name.c_str(), total_rounds);
+              int prior_state = id(station_states).count(target_station_id) ? id(station_states)[target_station_id] : STATE_UNKNOWN;
+              if (prior_state != STATE_CLEAR) {
+                ESP_LOGI("howe", "  STATE: %s: %s -> CLEAR", target_station_id.c_str(), state_name(prior_state).c_str());
+              }
+              id(station_states)[target_station_id] = STATE_CLEAR;
+              return;
+            }
+
+            // Handle presignal+GA combo stations specially
+            if ((type == "bj_combo_presignal" || type == "b_fire_presignal") &&
+                (presignal_rounds > 0 || general_rounds > 0)) {
+
+              int total = presignal_rounds + general_rounds;
+              int prior_state = id(station_states).count(target_station_id) ? id(station_states)[target_station_id] : STATE_UNKNOWN;
+
+              // Check presignal at GA timing
+              int presignal_at_ga = -1;
+              if (id(station_presignal_at_general).count(target_station_id)) {
+                presignal_at_ga = id(station_presignal_at_general)[target_station_id];
+              }
+              int presignal_after = (presignal_at_ga >= 0) ? (presignal_rounds - presignal_at_ga) : 0;
+              bool ended_on_presignal = presignal_after > 0;
+
+              // Prior reset detection
+              int prior_reset = 0;
+              if (total > 6) {
+                prior_reset = total - 6;
+              } else if (total == 6 && (prior_state == STATE_PRESIGNAL || prior_state == STATE_GENERAL_ALARM)) {
+                prior_reset = 1;
+              }
+              int presignal_alarm = (presignal_at_ga >= 0) ? std::max(0, presignal_at_ga - prior_reset) : 0;
+
+              if (general_rounds > 0) {
+                // Had GA
+                if (prior_reset > 0) {
+                  std::string presignal_code = "2-" + target_station_id;
+                  ESP_LOGI("howe", "  [%s] %s: %d rounds RESET (prior)", presignal_code.c_str(), name.c_str(), prior_reset);
+                }
+
+                int current_cycle = total - prior_reset;
+                std::string ga_status = ended_on_presignal ? "GENERAL ALARM + RESET" : "GENERAL ALARM";
+
+                if (presignal_alarm > 0) {
+                  std::string presignal_code = "2-" + target_station_id;
+                  ESP_LOGI("howe", "  [%s] %s: %d rounds PRESIGNAL", presignal_code.c_str(), name.c_str(), presignal_alarm);
+                }
+
+                std::string general_code = "3-" + target_station_id;
+                ESP_LOGI("howe", "  [%s] %s: %d rounds %s", general_code.c_str(), name.c_str(), general_rounds, ga_status.c_str());
+
+                if (presignal_after > 0 && current_cycle < 6) {
+                  std::string presignal_code = "2-" + target_station_id;
+                  ESP_LOGI("howe", "  [%s] %s: %d rounds PRESIGNAL", presignal_code.c_str(), name.c_str(), presignal_after);
+                }
+
+                // Update state
+                int new_state;
+                if (ended_on_presignal) {
+                  new_state = (current_cycle >= 6) ? STATE_CLEAR : STATE_PRESIGNAL;
+                } else {
+                  new_state = STATE_GENERAL_ALARM;
+                }
+                if (prior_state != new_state) {
+                  ESP_LOGI("howe", "  STATE: %s: %s -> %s", target_station_id.c_str(), state_name(prior_state).c_str(), state_name(new_state).c_str());
+                }
+                id(station_states)[target_station_id] = new_state;
+
+              } else {
+                // Simple presignal (no GA)
+                int prior = 0;
+                if (presignal_rounds > 6) {
+                  prior = presignal_rounds - 6;
+                } else if (presignal_rounds == 6 && prior_state == STATE_PRESIGNAL) {
+                  prior = 1;
+                }
+                int current = presignal_rounds - prior;
+
+                if (prior > 0) {
+                  std::string presignal_code = "2-" + target_station_id;
+                  ESP_LOGI("howe", "  [%s] %s: %d rounds RESET (prior)", presignal_code.c_str(), name.c_str(), prior);
+                }
+
+                std::string status;
+                int new_state;
+                if (current == 5) { status = "PRESIGNAL"; new_state = STATE_PRESIGNAL; }
+                else if (current == 1) { status = "RESET"; new_state = STATE_CLEAR; }
+                else if (current == 6) { status = "PRESIGNAL+RESET"; new_state = STATE_CLEAR; }
+                else { status = "ACTIVE"; new_state = STATE_PRESIGNAL; }
+
+                std::string presignal_code = "2-" + target_station_id;
+                ESP_LOGI("howe", "  [%s] %s: %d rounds %s", presignal_code.c_str(), name.c_str(), current, status.c_str());
+
+                if (prior_state != new_state) {
+                  ESP_LOGI("howe", "  STATE: %s: %s -> %s", target_station_id.c_str(), state_name(prior_state).c_str(), state_name(new_state).c_str());
+                }
+                id(station_states)[target_station_id] = new_state;
+              }
+              return;
+            }
+
+            // Standard handling for non-presignal modes
+            for (const auto& cp : codes_for_station) {
+              std::string code = cp.first;
+              int rounds = cp.second;
+              size_t first_dash = code.find('-');
+              int prefix = std::stoi(code.substr(0, first_dash));
+
+              // Get mode
+              std::string mode = "unknown";
+              if (type == "bj_combo") {
+                if (prefix == 1) mode = "watchman";
+                else if (prefix == 2) mode = "fire";
+              } else if (type == "bj_fire") {
+                if (prefix == 1 || prefix == 2) mode = "fire";
+              } else if (type == "b_combo") {
+                if (prefix == 1) mode = "fire";
+                else if (prefix == 2) mode = "watchman";
+              } else if (type == "b_fire") {
+                if (prefix == 1) mode = "fire";
+              } else if (type == "waterflow") {
+                if (prefix == 3) mode = "waterflow";
+              } else if (type == "v_station") {
+                if (prefix == 5) mode = "v_alarm";
+                else if (prefix == 6) mode = "v_reset";
+              }
+
+              // Check if this is a continuous station (b_combo/b_fire with fire prefix)
+              bool is_continuous_fire = (type == "b_combo" || type == "b_fire") && prefix == 1;
+
+              // Get status (continuous stations always show ALARM, not round-based)
+              std::string status = "";
+              if (mode == "fire" || mode == "waterflow") {
+                if (is_continuous_fire) status = "ALARM";
+                else if (rounds == 5) status = "ALARM";
+                else if (rounds == 1) status = "RESET";
+                else if (rounds == 6) status = "ALARM+RESET";
+                else status = "ACTIVE";
+              } else if (mode == "watchman") {
+                status = "WATCHMAN";
+              } else if (mode == "v_alarm") {
+                status = "ALARM";
+              } else if (mode == "v_reset") {
+                status = "RESET";
+              }
+
+              // Log
+              if (mode == "watchman") {
+                ESP_LOGI("howe", "  [%s] %s: %s", code.c_str(), name.c_str(), status.c_str());
+              } else {
+                ESP_LOGI("howe", "  [%s] %s: %d rounds %s", code.c_str(), name.c_str(), rounds, status.c_str());
+              }
+
+              // Update state
+              int new_state = STATE_UNKNOWN;
+              if (mode == "fire") {
+                new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_FIRE;
+              } else if (mode == "waterflow") {
+                new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_WATERFLOW;
+              } else if (mode == "watchman") {
+                new_state = STATE_WATCHMAN;
+              } else if (mode == "v_alarm") {
+                new_state = STATE_FIRE;
+              } else if (mode == "v_reset") {
+                new_state = STATE_CLEAR;
+              }
+
+              if (new_state != STATE_UNKNOWN) {
+                int prior_state = id(station_states).count(target_station_id) ? id(station_states)[target_station_id] : STATE_UNKNOWN;
+                if (prior_state != new_state) {
+                  ESP_LOGI("howe", "  STATE: %s: %s -> %s", target_station_id.c_str(), state_name(prior_state).c_str(), state_name(new_state).c_str());
+                }
+                id(station_states)[target_station_id] = new_state;
+              }
+            }
+          };
+
+          // ===== INTERIM SUMMARY: Process stations that have been skipped a full rotation =====
+          if (id(howe_in_transmission) && !id(pending_interim_summary).empty()) {
+            for (const std::string& sid : id(pending_interim_summary)) {
+              if (!id(interim_summarized).count(sid)) {
+                summarize_station(sid, true);
+                id(interim_summarized).insert(sid);
+                save_states();
+              }
+            }
+            id(pending_interim_summary).clear();
+          }
+
           // If oscillator has been quiet for >2 seconds, transmission is over
           if (id(howe_in_transmission) && silence > 2000) {
             // Record any pending digit
@@ -295,35 +775,139 @@ interval:
             // Log final round if we have data
             if (id(howe_current_code).length() > 0) {
               std::string code = id(howe_current_code);
-              std::string prefix = "";
-              std::string station = "";
+              int prefix_num = 0;
+              std::string station_id = "";
               size_t first_dash = code.find('-');
               if (first_dash != std::string::npos) {
-                prefix = code.substr(0, first_dash);
-                station = code.substr(first_dash + 1);
-              } else {
-                prefix = code;
+                prefix_num = std::stoi(code.substr(0, first_dash));
+                station_id = code.substr(first_dash + 1);
               }
 
               // Increment per-station round count
               id(howe_station_counts)[code]++;
               int round = id(howe_station_counts)[code];
 
-              ESP_LOGI("howe", "[%s] round %d (prefix=%s station=%s)",
-                       code.c_str(), round, prefix.c_str(), station.c_str());
+              // Log with station info if available
+              std::string name = id(station_names).count(station_id) ? id(station_names)[station_id] : "";
+              if (!name.empty()) {
+                ESP_LOGI("howe", "[%s] round %d (prefix=%d station=%s) %s",
+                         code.c_str(), round, prefix_num, station_id.c_str(), name.c_str());
+              } else {
+                ESP_LOGI("howe", "[%s] round %d (prefix=%d station=%s)",
+                         code.c_str(), round, prefix_num, station_id.c_str());
+              }
             }
 
-            // Log transmission summary with all station counts
+            // Log transmission summary
             ESP_LOGI("howe", "=== Transmission complete ===");
-            for (auto& kv : id(howe_station_counts)) {
-              ESP_LOGI("howe", "  Station [%s]: %d rounds", kv.first.c_str(), kv.second);
+
+            // Helper: add dashes between each char (e.g. "2334" -> "2-3-3-4")
+            auto add_dashes = [](const std::string& s) -> std::string {
+              std::string out;
+              for (size_t i = 0; i < s.length(); i++) {
+                if (i > 0) out += '-';
+                out += s[i];
+              }
+              return out;
+            };
+
+            // Restore station states from persistent string on first transmission
+            static bool states_restored = false;
+            if (!states_restored && !id(station_states_str).empty()) {
+              std::string data = id(station_states_str);
+              size_t pos = 0;
+              while (pos < data.length()) {
+                size_t comma = data.find(',', pos);
+                std::string record = (comma == std::string::npos) ? data.substr(pos) : data.substr(pos, comma - pos);
+                if (record.length() >= 2) {
+                  int state = record.back() - '0';
+                  std::string station_compact = record.substr(0, record.length() - 1);
+                  std::string station_id = add_dashes(station_compact);
+                  if (state >= 0 && state <= 6) {
+                    id(station_states)[station_id] = state;
+                    ESP_LOGI("howe", "Restored state: %s = %s", station_id.c_str(), state_name(state).c_str());
+                  }
+                }
+                if (comma == std::string::npos) break;
+                pos = comma + 1;
+              }
+              states_restored = true;
             }
 
-            // Reset state
+            // Collect unique station IDs from this transmission
+            std::set<std::string> unique_stations;
+            for (const auto& kv : id(howe_station_counts)) {
+              std::string code = kv.first;
+              size_t first_dash = code.find('-');
+              if (first_dash != std::string::npos) {
+                unique_stations.insert(code.substr(first_dash + 1));
+              }
+            }
+
+            // Summarize each station (uses shared summarize_station helper)
+            for (const std::string& station_id : unique_stations) {
+              summarize_station(station_id, false);
+            }
+
+            // Check continuous stations: bus stopped = all continuous stations stopped
+            // If a continuous station was FIRE and the bus is now quiet, it cleared
+            for (const auto& kv : id(continuous_last_seen)) {
+              std::string station_id = kv.first;
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+              if (prior_state == STATE_FIRE) {
+                ESP_LOGI("howe", "  STATE: %s: FIRE -> CLEAR (continuous stopped)", station_id.c_str());
+                id(station_states)[station_id] = STATE_CLEAR;
+              }
+            }
+
+            // Save states once per transmission (reduces flash wear)
+            save_states();
+
+            // Reset transmission state (but NOT station_states - that persists across transmissions!)
             id(howe_in_transmission) = false;
             id(howe_digit_counter) = 0;
             id(howe_gap_counter) = 0;
             id(howe_current_code) = "";
             id(howe_signal_seen) = false;
             id(howe_station_counts).clear();  // Clear for next transmission
+            id(station_presignal_at_general).clear();  // Clear GA tracking for next transmission
+            id(rounds_since_seen).clear();  // Clear interim tracking
+            id(interim_summarized).clear();
           }
+
+  # Periodic check for continuous stations that stopped (fallback for solo continuous stations)
+  - interval: 15s
+    then:
+      - lambda: |-
+          const int STATE_FIRE = 4;
+          const int STATE_CLEAR = 1;
+          unsigned long now = millis();
+          const unsigned long CONTINUOUS_TIMEOUT = 16000;  // 16 seconds
+
+          // Only check when bus is quiet (not in active transmission)
+          if (id(howe_in_transmission)) return;
+
+          // Check each continuous station
+          for (const auto& kv : id(continuous_last_seen)) {
+            std::string station_id = kv.first;
+            unsigned long last_seen = kv.second;
+
+            // If last seen > 16 seconds ago and station is FIRE, transition to CLEAR
+            if ((now - last_seen) > CONTINUOUS_TIMEOUT) {
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : 0;
+              if (prior_state == STATE_FIRE) {
+                ESP_LOGI("howe", "  STATE: %s: FIRE -> CLEAR (continuous timeout)", station_id.c_str());
+                id(station_states)[station_id] = STATE_CLEAR;
+
+                // Save states after clearing
+                std::string out;
+                for (const auto& sv : id(station_states)) {
+                  if (!out.empty()) out += ',';
+                  for (char c : sv.first) if (c != '-') out += c;
+                  out += ('0' + sv.second);
+                }
+                id(station_states_str) = out;
+              }
+            }
+          }
+

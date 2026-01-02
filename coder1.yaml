@@ -22,8 +22,8 @@ substitutions:
   # ADC button ladder (uses internal pullup, GPIO32/33 only)
   gpio_buttons_adc: 'GPIO32'
   # Howe decoder inputs (relay dry contacts)
-  gpio_howe_oscillator: 'GPIO18'
-  gpio_howe_signal: 'GPIO21'
+  gpio_howe_oscillator: 'GPIO26'
+  gpio_howe_signal: 'GPIO14'
 
 packages:
   main: !include main.yaml

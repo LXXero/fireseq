@@ -1,0 +1,106 @@
+# Howe Station Database (Optional)
+# Include this file to define your station mappings for enriched logging
+# If not included, decoder still works - just shows raw codes without names
+#
+# Station ID = digits AFTER prefix (e.g., "1-4-5" not "2-1-4-5")
+# Prefix indicates the MODE, not part of station identity
+#
+# Station Types:
+#   bj_combo           = 1:watchman, 2:fire
+#   bj_combo_presignal = 1:watchman, 2:presignal, 3:general_alarm
+#   bj_fire            = 1:fire
+#   b_combo            = 1:fire, 2:watchman (flipped vs BJ, continuous fire)
+#   b_fire             = 1:fire (continuous)
+#   b_fire_presignal   = 2:presignal, 3:general_alarm
+#   waterflow          = 3:waterflow
+#   v_station          = 5:alarm, 6:reset (single round)
+#   continuous         = always running (special handling)
+#
+# Round Count (most modes):
+#   5 rounds = ALARM
+#   1 round  = RESET
+#   6 rounds = ALARM+RESET (reset while still transmitting)
+#
+# Exceptions:
+#   watchman   = always 1 round (no alarm/reset distinction)
+#   v_station  = always 1 round, prefix determines alarm vs reset
+#   continuous = special handling
+
+esphome:
+  on_boot:
+    priority: 200
+    then:
+      - lambda: |-
+          // ===== STATION DATABASE MACROS =====
+          #define ADD_STATION(station_id, name, loc, type) \
+            id(station_names)[station_id] = name; \
+            id(station_locations)[station_id] = loc; \
+            id(station_types)[station_id] = type;
+
+          #define OVERRIDE_PREFIX(station_id, prefix, mode) \
+            id(station_prefix_overrides)[std::string(station_id) + ":" + std::to_string(prefix)] = mode;
+
+          // ===== STATION DATABASE =====
+          // Edit this section for your installation
+
+          // Example BJ Combo Fire & Watch stations
+          // ADD_STATION("1-4-5", "Lobby Pull Station", "Building A", "bj_combo");
+
+          // Example BJ Combo with Presignal
+          // ADD_STATION("2-3-3-4", "Stairwell Station", "Building A", "bj_combo_presignal");
+
+          // Example BJ Fire-only (uses prefix 1 for fire)
+          // ADD_STATION("9-X-5-2", "Basement Pull", "Building A", "bj_fire");
+
+          // Example B Combo (flipped prefixes: 1=fire, 2=watchman)
+          // ADD_STATION("1-2-1-2", "Phone Box", "Guard Station", "b_combo");
+
+          // Example B Fire with Presignal
+          // ADD_STATION("X-X-3-4", "Main Panel", "Lobby", "b_fire_presignal");
+
+          // Example Waterflow stations (prefix 3, blanks in ID)
+          // ADD_STATION("X-X-2-5", "Sprinkler Flow", "Pump Room", "waterflow");
+
+          // Example V-station (prefix 5=alarm, 6=reset, single round)
+          // ADD_STATION("1-3-3", "V133 Station", "Hallway", "v_station");
+
+          // Example override: repurposed waterflow acting as fire
+          // ADD_STATION("X-X-2-9", "Repurposed Station", "Somewhere", "waterflow");
+          // OVERRIDE_PREFIX("X-X-2-9", 3, "fire");
+
+          // ===== YOUR STATIONS =====
+
+          // BJ Fire-only stations
+          ADD_STATION("9-X-5-2", "BJ Fire Station", "", "bj_fire");
+
+          // BJ Combo Fire & Watch stations
+          ADD_STATION("1-4-5", "Master Combo Station (1940s)", "", "bj_combo");
+          ADD_STATION("4-3-1-2", "Art Deco Combo Station", "", "bj_combo");
+          ADD_STATION("2-4-2", "Weather Combo Station", "", "bj_combo");
+
+          // BJ Combination Presignal stations
+          ADD_STATION("2-3-3-4", "BJ Combo Presignal", "", "bj_combo_presignal");
+
+          // B Combo Fire & Watch (flipped prefixes)
+          ADD_STATION("1-2-1-2", "1930s Phone Combo Station", "", "b_combo");
+          ADD_STATION("2-1-2", "1930s Round Combo Station", "", "b_combo");
+
+          // B Fire-only (continuous)
+          ADD_STATION("3-2-2-4", "Fire Loaf", "", "b_fire");
+
+          // B Fire-only Presignal
+          ADD_STATION("X-2-6", "B Fire Presignal", "", "b_fire_presignal");
+
+          // Waterflow stations
+          ADD_STATION("X-X-2-9", "Waterflow Switch", "", "waterflow");
+
+          // Repurposed waterflow -> fire
+          ADD_STATION("X-X-2-5", "Repurposed Waterflow", "", "waterflow");
+          OVERRIDE_PREFIX("X-X-2-5", 3, "fire");
+
+          // V-type stations (prefix 5=alarm, 6=reset)
+          ADD_STATION("1-3-3", "Round V-Type Fire Station", "", "v_station");
+
+          // ================================
+          #undef ADD_STATION
+          #undef OVERRIDE_PREFIX
