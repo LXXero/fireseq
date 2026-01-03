@@ -1,28 +1,28 @@
 esphome:
   name: ${name}
   on_boot:
-    priority: 500
-    then:
-      - delay: 66ms
-      - if:
-          condition:
-            binary_sensor.is_on: zone_input
-          then:
-            - script.execute:
-                id: set_effect
-                type: restore
-                mode: set
-            - switch.turn_on: shunt
-          else:
-            - script.execute:
-                id: set_effect
-                type: restore
-                mode: restore
-            - if:
-                condition:
-                  binary_sensor.is_on: presignal_input
-                then:
-                  - script.execute: set_presignal
+    - priority: 500
+      then:
+        - delay: 66ms
+        - if:
+            condition:
+              binary_sensor.is_on: zone_input
+            then:
+              - script.execute:
+                  id: set_effect
+                  type: restore
+                  mode: set
+              - switch.turn_on: shunt
+            else:
+              - script.execute:
+                  id: set_effect
+                  type: restore
+                  mode: restore
+              - if:
+                  condition:
+                    binary_sensor.is_on: presignal_input
+                  then:
+                    - script.execute: set_presignal
 
 esp32:
   board: esp32doit-devkit-v1
@@ -232,206 +232,6 @@ light:
           then:
             - delay: 5000ms
             - light.turn_off: code
-    effects:
-      - lambda:
-          name: 'On'
-          update_interval: 250ms
-          lambda: ''
-
-      - lambda:
-          name: 'Off'
-          update_interval: 250ms
-          lambda: |-
-            id(code_output).turn_off();
-
-      - march:
-          name: March 20
-          output: code_output
-          on_ms: 1500
-
-      - march:
-          name: March 30
-          output: code_output
-          on_ms: 1000
-
-      - march:
-          name: March 60
-          output: code_output
-          on_ms: 500
-
-      - march:
-          name: March 90
-          output: code_output
-          on_ms: 333
-
-      - march:
-          name: March 100
-          output: code_output
-          on_ms: 300
-
-      - march:
-          name: March 120
-          output: code_output
-          on_ms: 250
-
-      - march:
-          name: March 150
-          output: code_output
-          on_ms: 200
-
-      - march:
-          name: March 180
-          output: code_output
-          on_ms: 166
-
-      - march:
-          name: March 200
-          output: code_output
-          on_ms: 150
-
-      - march:
-          name: March 250
-          output: code_output
-          on_ms: 120
-
-      - march:
-          name: March 300 / Steady T4
-          output: code_output
-          on_ms: 100
-
-      - step_seq:
-          name: March 150 Fun
-          output: code_output
-          step_ms: 66
-          # 7 slow cycles (3 on, 3 off) + 3 fast cycles (1 on, 1 off)
-          pattern: ".--   .--   .--   .--   .--   .--   .--   . . . "
-
-      - step_seq:
-          name: Four On The Floor
-          output: code_output
-          step_ms: 125
-          # Classic disco/house - steady quarter notes
-          pattern: ".   .   .   .   "
-
-      - step_seq:
-          name: Boots N Cats
-          output: code_output
-          step_ms: 100
-          # boots-n-cats-n-boots-n-cats
-          pattern: ".-- . .-- . "
-
-      - step_seq:
-          name: Breakbeat
-          output: code_output
-          step_ms: 80
-          # Amen break style
-          pattern: ".  .. .  . .. . "
-
-      - step_seq:
-          name: Syncopation
-          output: code_output
-          step_ms: 100
-          # Off-beat funk
-          pattern: ". ..  . . ..  . "
-
-      - step_seq:
-          name: Gallop
-          output: code_output
-          step_ms: 80
-          # Metal gallop rhythm
-          pattern: ".  . ..  . ."
-
-      - step_seq:
-          name: SOS
-          output: code_output
-          step_ms: 100
-          # ... --- ... (morse code)
-          pattern: ". . .   .-- .-- .--   . . .       "
-
-      - step_seq:
-          name: XERO
-          output: code_output
-          step_ms: 100
-          # -..- . .-. --- (morse code)
-          pattern: ".-- . . .--   .   . .-- .   .-- .-- .--       "
-
-      - march:
-          name: Standard March
-          output: code_output
-          on_ms: 150
-          off_ms: 400
-
-      - march:
-          name: PreSignal
-          output: code_output
-          on_ms: 100
-          off_ms: 3000
-
-      - march:
-          name: California Code
-          output: code_output
-          on_ms: 10000
-          off_ms: 5000
-
-      - fire_code:
-          name: Pulsed California Code
-          output: code_output
-          pattern: "20"
-          pulse_ms: 250
-          cycle_gap_ms: 5000
-
-      - fire_code:
-          name: 4-4
-          output: code_output
-          pattern: "4 4"
-          pulse_ms: 250
-
-      - fire_code:
-          name: 4-4-4-4
-          output: code_output
-          pattern: "4 4 4 4"
-          pulse_ms: 250
-
-      - fire_code:
-          name: Jingle Bells
-          output: code_output
-          pattern: "3 3 5"
-          pulse_ms: 250
-          group_gap_ms: 750
-          cycle_gap_ms: 1750
-
-      - fire_code:
-          name: Temporal 3
-          output: code_output
-          pattern: "3"
-          pulse_ms: 500
-          cycle_gap_ms: 1500
-
-      - fire_code:
-          name: Temporal 4
-          output: code_output
-          pattern: "4"
-          pulse_ms: 100
-
-      - fire_code:
-          name: Temporal 2
-          output: code_output
-          pattern: "2"
-          pulse_ms: 115
-          cycle_gap_ms: 575
-
-      - march:
-          name: Federal Signal Siren
-          output: code_output
-          on_ms: 6000
-          off_ms: 6000
-
-      - march:
-          name: Fast Wail
-          output: code_output
-          on_ms: 2000
-          off_ms: 2000
-
 globals:
  - id: alarm_active
    type: bool
@@ -456,51 +256,18 @@ globals:
 
  - id: fire_effects
    type: std::vector<std::string>
-   initial_value: '{
-     "On",
-     "Temporal 2",
-     "Temporal 3",
-     "Temporal 4",
-     "California Code",
-     "Pulsed California Code",
-     "4-4",
-     "4-4-4-4",
-     "Off"
-   }'
+   restore_value: no
+   initial_value: 'std::vector<std::string>{}'
 
  - id: march_effects
    type: std::vector<std::string>
-   initial_value: '{
-     "PreSignal",
-     "March 20",
-     "March 30",
-     "March 60",
-     "March 90",
-     "March 100",
-     "March 120",
-     "March 150",
-     "March 180",
-     "March 200",
-     "March 250",
-     "March 300 / Steady T4",
-     "Standard March",
-     "March 150 Fun"
-   }'
+   restore_value: no
+   initial_value: 'std::vector<std::string>{}'
 
  - id: code_effects
    type: std::vector<std::string>
-   initial_value: '{
-     "Jingle Bells",
-     "Federal Signal Siren",
-     "Fast Wail",
-     "Four On The Floor",
-     "Boots N Cats",
-     "Breakbeat",
-     "Syncopation",
-     "Gallop",
-     "SOS",
-     "XERO"
-   }'
+   restore_value: no
+   initial_value: 'std::vector<std::string>{}'
 
  - id: doorbell_effects
    type: std::vector<std::string>

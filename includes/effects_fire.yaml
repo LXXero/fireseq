@@ -1,0 +1,240 @@
+# Fire Effects
+# Populates fire_effects, march_effects, and code_effects lists
+
+esphome:
+  on_boot:
+    - priority: 800
+      then:
+        - lambda: |-
+            // Fire effects
+            id(fire_effects).push_back("On");
+            id(fire_effects).push_back("Temporal 2");
+            id(fire_effects).push_back("Temporal 3");
+            id(fire_effects).push_back("Temporal 4");
+            id(fire_effects).push_back("California Code");
+            id(fire_effects).push_back("Pulsed California Code");
+            id(fire_effects).push_back("4-4");
+            id(fire_effects).push_back("4-4-4-4");
+            id(fire_effects).push_back("Off");
+
+            // March effects
+            id(march_effects).push_back("PreSignal");
+            id(march_effects).push_back("March 20");
+            id(march_effects).push_back("March 30");
+            id(march_effects).push_back("March 60");
+            id(march_effects).push_back("March 90");
+            id(march_effects).push_back("March 100");
+            id(march_effects).push_back("March 120");
+            id(march_effects).push_back("March 150");
+            id(march_effects).push_back("March 180");
+            id(march_effects).push_back("March 200");
+            id(march_effects).push_back("March 250");
+            id(march_effects).push_back("March 300 / Steady T4");
+            id(march_effects).push_back("Standard March");
+            id(march_effects).push_back("March 150 Fun");
+
+            // Code effects
+            id(code_effects).push_back("Jingle Bells");
+            id(code_effects).push_back("Federal Signal Siren");
+            id(code_effects).push_back("Fast Wail");
+            id(code_effects).push_back("Four On The Floor");
+            id(code_effects).push_back("Boots N Cats");
+            id(code_effects).push_back("Breakbeat");
+            id(code_effects).push_back("Syncopation");
+            id(code_effects).push_back("Gallop");
+            id(code_effects).push_back("SOS");
+            id(code_effects).push_back("XERO");
+
+light:
+  - id: !extend code
+    effects:
+      - lambda:
+          name: 'On'
+          update_interval: 250ms
+          lambda: ''
+
+      - lambda:
+          name: 'Off'
+          update_interval: 250ms
+          lambda: |-
+            id(code_output).turn_off();
+
+      - march:
+          name: March 20
+          output: code_output
+          on_ms: 1500
+
+      - march:
+          name: March 30
+          output: code_output
+          on_ms: 1000
+
+      - march:
+          name: March 60
+          output: code_output
+          on_ms: 500
+
+      - march:
+          name: March 90
+          output: code_output
+          on_ms: 333
+
+      - march:
+          name: March 100
+          output: code_output
+          on_ms: 300
+
+      - march:
+          name: March 120
+          output: code_output
+          on_ms: 250
+
+      - march:
+          name: March 150
+          output: code_output
+          on_ms: 200
+
+      - march:
+          name: March 180
+          output: code_output
+          on_ms: 166
+
+      - march:
+          name: March 200
+          output: code_output
+          on_ms: 150
+
+      - march:
+          name: March 250
+          output: code_output
+          on_ms: 120
+
+      - march:
+          name: March 300 / Steady T4
+          output: code_output
+          on_ms: 100
+
+      - step_seq:
+          name: March 150 Fun
+          output: code_output
+          step_ms: 66
+          pattern: ".--   .--   .--   .--   .--   .--   .--   . . . "
+
+      - step_seq:
+          name: Four On The Floor
+          output: code_output
+          step_ms: 125
+          pattern: ".   .   .   .   "
+
+      - step_seq:
+          name: Boots N Cats
+          output: code_output
+          step_ms: 100
+          pattern: ".-- . .-- . "
+
+      - step_seq:
+          name: Breakbeat
+          output: code_output
+          step_ms: 80
+          pattern: ".  .. .  . .. . "
+
+      - step_seq:
+          name: Syncopation
+          output: code_output
+          step_ms: 100
+          pattern: ". ..  . . ..  . "
+
+      - step_seq:
+          name: Gallop
+          output: code_output
+          step_ms: 80
+          pattern: ".  . ..  . ."
+
+      - step_seq:
+          name: SOS
+          output: code_output
+          step_ms: 100
+          pattern: ". . .   .-- .-- .--   . . .       "
+
+      - step_seq:
+          name: XERO
+          output: code_output
+          step_ms: 100
+          pattern: ".-- . . .--   .   . .-- .   .-- .-- .--       "
+
+      - march:
+          name: Standard March
+          output: code_output
+          on_ms: 150
+          off_ms: 400
+
+      - march:
+          name: PreSignal
+          output: code_output
+          on_ms: 100
+          off_ms: 3000
+
+      - march:
+          name: California Code
+          output: code_output
+          on_ms: 10000
+          off_ms: 5000
+
+      - fire_code:
+          name: Pulsed California Code
+          output: code_output
+          pattern: "20"
+          pulse_ms: 250
+          cycle_gap_ms: 5000
+
+      - fire_code:
+          name: 4-4
+          output: code_output
+          pattern: "4 4"
+          pulse_ms: 250
+
+      - fire_code:
+          name: 4-4-4-4
+          output: code_output
+          pattern: "4 4 4 4"
+          pulse_ms: 250
+
+      - fire_code:
+          name: Jingle Bells
+          output: code_output
+          pattern: "3 3 5"
+          pulse_ms: 250
+          group_gap_ms: 750
+          cycle_gap_ms: 1750
+
+      - fire_code:
+          name: Temporal 3
+          output: code_output
+          pattern: "3"
+          pulse_ms: 500
+          cycle_gap_ms: 1500
+
+      - fire_code:
+          name: Temporal 4
+          output: code_output
+          pattern: "4"
+          pulse_ms: 100
+
+      - fire_code:
+          name: Temporal 2
+          output: code_output
+          pattern: "2"
+          pulse_ms: 115
+          cycle_gap_ms: 575
+
+      - march:
+          name: Federal Signal Siren
+          output: code_output
+          on_ms: 6000
+          off_ms: 6000
+
+      - march:
+          name: Fast Wail
+          output: code_output
+          on_ms: 2000
+          off_ms: 2000

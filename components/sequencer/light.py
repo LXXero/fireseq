@@ -146,7 +146,7 @@ async def chime_seq_effect_to_code(config, effect_id):
     cg.add(var.set_repeat(config[CONF_REPEAT]))
     step_ms = config[CONF_STEP_MS]
     lead_in_ms = config.get(CONF_LEAD_IN_MS, step_ms)
-    lead_out_ms = config.get(CONF_LEAD_OUT_MS, step_ms * 2)
+    lead_out_ms = config.get(CONF_LEAD_OUT_MS, step_ms)
     cg.add(var.set_lead_in_ms(lead_in_ms))
     cg.add(var.set_lead_out_ms(lead_out_ms))
     return var

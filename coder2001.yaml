@@ -23,5 +23,6 @@ substitutions:
 
 packages:
   main: !include main.yaml
+  fire: !include includes/effects_fire.yaml
   buttons: !include includes/buttons_adc.yaml
   display: !include includes/display_oled.yaml

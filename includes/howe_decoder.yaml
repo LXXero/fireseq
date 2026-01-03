@@ -714,6 +714,13 @@ interval:
               } else if (type == "v_station") {
                 if (prefix == 5) mode = "v_alarm";
                 else if (prefix == 6) mode = "v_reset";
+              } else if (type == "bj_combo_presignal") {
+                if (prefix == 1) mode = "watchman";
+                else if (prefix == 2) mode = "presignal";
+                else if (prefix == 3) mode = "general_alarm";
+              } else if (type == "b_fire_presignal") {
+                if (prefix == 2) mode = "presignal";
+                else if (prefix == 3) mode = "general_alarm";
               }
 
               // Check if this is a continuous station (b_combo/b_fire with fire prefix)
@@ -735,6 +742,10 @@ interval:
                 status = "ALARM";
               } else if (mode == "v_reset") {
                 status = "RESET";
+              } else if (mode == "presignal") {
+                status = "PRESIGNAL";
+              } else if (mode == "general_alarm") {
+                status = "GENERAL ALARM";
               }
 
               // Log
@@ -763,6 +774,10 @@ interval:
                 new_state = STATE_FIRE;
               } else if (mode == "v_reset") {
                 new_state = STATE_CLEAR;
+              } else if (mode == "presignal") {
+                new_state = STATE_PRESIGNAL;
+              } else if (mode == "general_alarm") {
+                new_state = STATE_FIRE;
               }
 
               if (new_state != STATE_UNKNOWN) {

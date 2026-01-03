@@ -13,7 +13,7 @@ substitutions:
   # Inputs
   gpio_doorbell: 'GPIO35'
   gpio_zone: 'GPIO27'
-  gpio_zone_invert: 'false'
+  gpio_zone_invert: 'true'
   gpio_presignal: 'GPIO34'
   gpio_presignal_invert: 'false'
   # I2C (for OLED)
