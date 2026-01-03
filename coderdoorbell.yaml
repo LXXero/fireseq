@@ -30,4 +30,5 @@ substitutions:
 
 packages:
   main: !include main.yaml
+  doorbell: !include includes/effects_doorbell.yaml
   buttons: !include includes/buttons_gpio.yaml

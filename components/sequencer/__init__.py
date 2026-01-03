@@ -11,6 +11,7 @@ from .light import (
     fire_code_effect_to_code,
     step_seq_effect_to_code,
     march_effect_to_code,
+    chime_seq_effect_to_code,
 )
 
 CONFIG_SCHEMA = cv.Schema({})

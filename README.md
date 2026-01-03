@@ -29,6 +29,31 @@ The fire sequencer has 3 sections of codes, which are accessed by 3 pairs of up/
 - Doorbell Input (Pulldown, Relay Activated)
   - cycles through a dedicated list of "doorbell" codes upon each button press
   - can be attached to external relay for activation w/smart doorbells, etc
+  - supports multi-note chime sequences via the `chime_seq` effect type
+
+## Doorbell Chime Sequencer
+The `chime_seq` effect drives 4-bar xylophone chimes (like the Rittenhouse Master 550) using note names:
+- **E** = E5 (code_output) - highest
+- **D** = D5 (shunt)
+- **C** = C5 (reverse)
+- **G** = G4 (trigger) - lowest
+- **\*** = strike all 4 notes (hour chime)
+- **space** = rest (silence)
+- **|** = divider (ignored, for readability)
+
+Includes Westminster chimes, Ding Dong, Shave and a Haircut, and a variety of classic folk tunes.
+
+## Howe Decoder
+Decodes signals from Autocall Howe transmitters and similar electromechanical coded pull stations. Features include:
+- Station identification with prefix and code parsing
+- Support for multiple station types (B, BJ, BX, V-stations, waterflow)
+- Round counting to determine alarm vs reset status
+- Presignal and general alarm detection
+- Round-robin detection for multiple stations on the same circuit
+- Continuous station handling
+- "Howe Follower" effect to mirror incoming signals on the code output
+
+## Outputs
 - Code output (Relay/FET)
 - Shunt output (Relay/FET)
 - Reverse output (Relay/FET)

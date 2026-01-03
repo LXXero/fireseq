@@ -1,0 +1,244 @@
+# Doorbell Effects and Input Handler
+# Only include this on coders that have a doorbell input
+#
+# Chime bar mapping (Rittenhouse Master 550):
+#   E = E5 (code_output) - highest
+#   D = D5 (shunt)
+#   C = C5 (reverse)
+#   G = G4 (trigger) - lowest
+#
+# Pattern format (consistent with step_seq):
+#   E, D, C, G = strike that note
+#   * = strike all 4 notes (hour chime)
+#   (space) = rest (silence)
+#   | = divider (ignored, for readability)
+
+button:
+  - name: Doorbell
+    id: doorbell
+    platform: template
+    on_press:
+      - if:
+          condition:
+            light.is_on: code
+          then:
+            - light.turn_off: code
+          else:
+            - script.execute:
+                id: set_effect
+                type: doorbell
+                mode: up
+
+binary_sensor:
+  - name: Doorbell
+    platform: gpio
+    pin:
+      number: ${gpio_doorbell}
+      inverted: false
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 100ms
+    on_press:
+      - button.press: doorbell
+
+light:
+  - id: !extend code
+    effects:
+      # Westminster Quarter (8 notes) - classic doorbell chime
+      - chime_seq:
+          name: Westminster
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 500
+          pattern: "E C D G  G D E C"
+
+      # Westminster Quarter + 12 hour strikes
+      - chime_seq:
+          name: Westminster 12
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 500
+          pattern: "E C D G  G D E C   * * * * * * * * * * * *"
+
+      # Westminster Full (16 notes) - full 4-quarter melody
+      - chime_seq:
+          name: Westminster 16 Note
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 500
+          pattern: "C E D G  C D E C  E C D G  G D E C"
+
+      # Westminster Full + 12 hour strikes
+      - chime_seq:
+          name: Westminster 16 Note 12
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 500
+          pattern: "C E D G  C D E C  E C D G  G D E C   * * * * * * * * * * * *"
+
+      # Turkey in the Straw - fun holiday doorbell
+      - chime_seq:
+          name: Turkey
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 150
+          pattern: "E D C C  C  G G G  G  C D E E  E  C D E  D D"
+
+      # Camptown Races - "doo-dah, doo-dah"
+      # Original needs A which we don't have, D substitutes
+      - chime_seq:
+          name: Camptown Races
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 150
+          pattern: "E E C E  D E C   D G   D G   E E C E  D E C   D  G"
+
+      # The Ants Go Marching - military march feel
+      - chime_seq:
+          name: Ants Marching
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 175
+          pattern: "E  E E E  D D  C C   G C   G C   E  E E E  D D  C  G"
+
+      # Three Blind Mice - perfect 3-note descending fit
+      - chime_seq:
+          name: Three Blind Mice
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 300
+          pattern: "E D C   E D C   G G G G C C C C   E D C"
+
+      # Ring Around the Rosie
+      - chime_seq:
+          name: Ring Around Rosie
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 250
+          pattern: "E C E C  E C  D E C   E C E C  E  C  G"
+
+      # Rain Rain Go Away - simple and sweet
+      - chime_seq:
+          name: Rain Go Away
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 300
+          pattern: "E E C   E E C   E D E C  G   E E C"
+
+      # This Old Man - knick knack paddy whack
+      - chime_seq:
+          name: This Old Man
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 200
+          pattern: "E C  E C  E   D E C   D D D D  E D C G   C D E C  D  G"
+
+      # Simple two-tone doorbell
+      - chime_seq:
+          name: Ding Dong
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 250
+          pattern: "E C       E C"
+
+      # Shave and a Haircut - classic 7-note pattern
+      - chime_seq:
+          name: Shave Haircut
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 200
+          pattern: "C C G   G   E C"
+
+      # Mary Had a Little Lamb
+      - chime_seq:
+          name: Mary Lamb
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 300
+          pattern: "E D C D E E E   D D D   E G G   E D C D E E E E D D E D C"
+
+      # Hot Cross Buns
+      - chime_seq:
+          name: Hot Cross Buns
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 300
+          pattern: "E D C   E D C   C C C C D D D D E D C"
+
+      # Descending scale - simple elegant chime
+      - chime_seq:
+          name: Descending
+          output_e: code_output
+          output_d: shunt
+          output_c: reverse
+          output_g: trigger
+          step_ms: 400
+          pattern: "E   D   C   G"
+
+# Populate doorbell_effects list on boot (priority 600 = runs before main's 500)
+esphome:
+  on_boot:
+    - priority: 600
+      then:
+        - lambda: |-
+            // Populate doorbell effects list
+            id(doorbell_effects).push_back("Westminster");
+            // id(doorbell_effects).push_back("Westminster 12");  // too long for testing
+            id(doorbell_effects).push_back("Westminster 16 Note");
+            // id(doorbell_effects).push_back("Westminster 16 Note 12");  // too long for testing
+            id(doorbell_effects).push_back("Turkey");
+            id(doorbell_effects).push_back("Camptown Races");
+            id(doorbell_effects).push_back("Ants Marching");
+            id(doorbell_effects).push_back("Three Blind Mice");
+            id(doorbell_effects).push_back("Ring Around Rosie");
+            id(doorbell_effects).push_back("Rain Go Away");
+            id(doorbell_effects).push_back("This Old Man");
+            id(doorbell_effects).push_back("Ding Dong");
+            id(doorbell_effects).push_back("Shave Haircut");
+            id(doorbell_effects).push_back("Mary Lamb");
+            id(doorbell_effects).push_back("Hot Cross Buns");
+            id(doorbell_effects).push_back("Descending");
+
+            // Force doorbell device to use doorbell effects (type 3)
+            id(effect_type) = 3;
+            id(effect) = 0;
+
+    # Priority 400 runs AFTER main's 500 - ensure doorbell starts quiet
+    - priority: 400
+      then:
+        - light.turn_off: code
+        - switch.turn_off: shunt
+        - switch.turn_off: reverse
+        - switch.turn_off: trigger

@@ -675,6 +675,19 @@ interval:
             }
 
             // Standard handling for non-presignal modes
+            // First, check if b_combo had fire (prefix 1) in this transmission
+            // This determines if prefix 2 is watchman vs reset
+            bool b_combo_had_fire = false;
+            if (type == "b_combo") {
+              for (const auto& cp : codes_for_station) {
+                size_t dash = cp.first.find('-');
+                if (dash != std::string::npos && std::stoi(cp.first.substr(0, dash)) == 1) {
+                  b_combo_had_fire = true;
+                  break;
+                }
+              }
+            }
+
             for (const auto& cp : codes_for_station) {
               std::string code = cp.first;
               int rounds = cp.second;
@@ -690,7 +703,10 @@ interval:
                 if (prefix == 1 || prefix == 2) mode = "fire";
               } else if (type == "b_combo") {
                 if (prefix == 1) mode = "fire";
-                else if (prefix == 2) mode = "watchman";
+                else if (prefix == 2) {
+                  // If fire was active this transmission, prefix 2 = reset, not watchman
+                  mode = b_combo_had_fire ? "reset" : "watchman";
+                }
               } else if (type == "b_fire") {
                 if (prefix == 1) mode = "fire";
               } else if (type == "waterflow") {
@@ -713,6 +729,8 @@ interval:
                 else status = "ACTIVE";
               } else if (mode == "watchman") {
                 status = "WATCHMAN";
+              } else if (mode == "reset") {
+                status = "RESET";
               } else if (mode == "v_alarm") {
                 status = "ALARM";
               } else if (mode == "v_reset") {
@@ -729,11 +747,18 @@ interval:
               // Update state
               int new_state = STATE_UNKNOWN;
               if (mode == "fire") {
-                new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_FIRE;
+                // Continuous fire state is handled separately (immediate FIRE, CLEAR on bus stop)
+                if (is_continuous_fire) {
+                  new_state = STATE_FIRE;  // Always FIRE while transmitting
+                } else {
+                  new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_FIRE;
+                }
               } else if (mode == "waterflow") {
                 new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_WATERFLOW;
               } else if (mode == "watchman") {
                 new_state = STATE_WATCHMAN;
+              } else if (mode == "reset") {
+                new_state = STATE_CLEAR;
               } else if (mode == "v_alarm") {
                 new_state = STATE_FIRE;
               } else if (mode == "v_reset") {
@@ -911,3 +936,26 @@ interval:
             }
           }
 
+# Extend the code light with Howe Follower effect
+light:
+  - id: !extend code
+    effects:
+      - lambda:
+          name: Howe Follower
+          update_interval: 10ms
+          lambda: |-
+            // Follow the Howe signal input - output mirrors what's coming in
+            if (id(howe_signal).state) {
+              id(code_output).turn_on();
+            } else {
+              id(code_output).turn_off();
+            }
+
+# Add Howe Follower to code_effects list on boot
+esphome:
+  on_boot:
+    priority: 100
+    then:
+      - lambda: |-
+          // Insert "Howe Follower" at the beginning of code_effects
+          id(code_effects).insert(id(code_effects).begin(), "Howe Follower");

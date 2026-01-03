@@ -1,0 +1,82 @@
+# Firecom Effects
+# These effects implement Firecom signaling modes
+
+light:
+  - id: !extend code
+    effects:
+      - lambda:
+          name: Firecom
+          update_interval: 1500ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+            if (state == 0 || state == 11 ) {
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
+            }
+
+            if (state <11 && state != 0) {
+              id(trigger).turn_off();
+            } else {
+              id(trigger).turn_on();
+            }
+
+            state += 1;
+            if (state == 20)
+              state = 0;
+
+      - lambda:
+          name: Firecom Whoop
+          update_interval: 250ms
+          lambda: |-
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_off();
+              id(trigger).turn_off();
+            }
+
+      - lambda:
+          name: Firecom Chime
+          update_interval: 250ms
+          lambda: |-
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_off();
+              id(trigger).turn_on();
+            }
+
+      - lambda:
+          name: Firecom Pulsed Tone
+          update_interval: 250ms
+          lambda: |-
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_on();
+              id(trigger).turn_on();
+            }
+
+      - lambda:
+          name: Firecom Steady Tone
+          update_interval: 250ms
+          lambda: |-
+            if (initial_run) {
+              id(code_output).turn_on();
+              id(reverse).turn_on();
+              id(trigger).turn_off();
+            }
+
+# Add Firecom effects to code_effects list on boot
+esphome:
+  on_boot:
+    priority: 100
+    then:
+      - lambda: |-
+          // Insert Firecom effects at the beginning of code_effects
+          id(code_effects).insert(id(code_effects).begin(), "Firecom Steady Tone");
+          id(code_effects).insert(id(code_effects).begin(), "Firecom Pulsed Tone");
+          id(code_effects).insert(id(code_effects).begin(), "Firecom Chime");
+          id(code_effects).insert(id(code_effects).begin(), "Firecom Whoop");
+          id(code_effects).insert(id(code_effects).begin(), "Firecom");

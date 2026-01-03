@@ -30,5 +30,6 @@ substitutions:
 
 packages:
   main: !include main.yaml
+  firecom: !include includes/effects_firecom.yaml
   buttons: !include includes/buttons_gpio.yaml
   display: !include includes/display_oled.yaml

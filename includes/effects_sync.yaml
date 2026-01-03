@@ -1,0 +1,169 @@
+# Smart Sync / Shart Sync Protocol Effects
+# These effects implement the SmartSync inversion protocol used by some fire alarm systems
+
+light:
+  - id: !extend code
+    effects:
+      - lambda:
+          name: Shart Sync
+          update_interval: 0ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+
+            if (state == 1 || state == 116 || state == 231 || state == 346  ||
+                (state > 356 && state < 362 )  ||    (state > 367 &&  state < 373 )   || (state > 378 &&  state < 384)  ||
+                (state >389 && state < 394) ||  (state > 395 && state < 397)     ) {
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
+            }
+
+            if (state == 394 || state == 395) {
+              id(shunt).turn_off();
+              id(reverse).turn_on();
+            } else {
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            state += 1;
+            if (state == 448)
+              state = 0;
+
+      - lambda:
+          name: Smart Sync
+          update_interval: 0ms
+          lambda: |-
+            static int state = 0;
+            static int inverse = 0;
+            if (initial_run) {
+              state = 0;
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
+                  (state >= 345 && state < 347  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
+              id(code_output).turn_off();
+              inverse = 1;
+            } else {
+              id(code_output).turn_on();
+              inverse = 0;
+            }
+
+            if (state >= 344 && state <= 348 ) {
+              id(shunt).turn_off();
+              id(reverse).turn_on();
+            } else {
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            state += 1;
+            if (state == 905)
+              state = 0;
+
+      - lambda:
+          name: Smart Sync March
+          update_interval: 0ms
+          lambda: |-
+            static int state = 0;
+            static int inverse = 0;
+            if (initial_run) {
+              state = 0;
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            if (state == 1 || state == 2 || state == 114 || state == 115 || state == 227 || state == 228 ||  state == 340 || state == 341 ||
+                 (state >= 344 && state <= 348  )   || state == 453 || state == 454 || state ==  566 || state == 567 || state == 679 || state == 680 || state == 792 || state == 793) {
+              id(code_output).turn_off();
+              inverse = 1;
+            } else {
+              id(code_output).turn_on();
+              inverse = 0;
+            }
+
+            if (state >= 344 && state <= 348 ) {
+              id(shunt).turn_off();
+              id(reverse).turn_on();
+            } else {
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            state += 1;
+            if (state == 905)
+              state = 0;
+
+      - lambda:
+          name: Smart Sync Silence
+          update_interval: 0ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) {
+              state = 0;
+            }
+
+            if (state == 1 || state == 115 || state == 229 || state == 343 ||
+               state == 457 || state == 571 || state == 685 || state == 820 || state == 822 || state == 824 ) {
+              id(code_output).turn_off();
+            } else {
+              id(code_output).turn_on();
+            }
+
+            if (state >799 && state <827) {
+              id(shunt).turn_off();
+              id(reverse).turn_on();
+            } else {
+              id(shunt).turn_on();
+              id(reverse).turn_off();
+            }
+
+            state += 1;
+            if (state == 914)
+              state = 0;
+
+      - lambda:
+          name: Smart Sync Old Silence
+          update_interval: 10ms
+          lambda: |-
+            static int state = 0;
+            if (initial_run) state = 0;
+            // 6 cycles: 1 tick off, 98 ticks on (99 each = 594)
+            // Cycle 7: 1 tick off, 100 ticks on (101, ends at 695)
+            // Cycle 8: 25 ticks off, 75 ticks on (100, ends at 795)
+            int pos = state;
+            bool on = true;
+            if (pos < 594) {
+              // Cycles 1-6: off at 0,99,198,297,396,495
+              int cycle_pos = pos % 99;
+              on = (cycle_pos > 0);
+            } else if (pos < 695) {
+              // Cycle 7
+              int cycle_pos = pos - 594;
+              on = (cycle_pos > 0);
+            } else {
+              // Cycle 8
+              int cycle_pos = pos - 695;
+              on = (cycle_pos >= 25);
+            }
+            if (on) { id(code_output).turn_on(); } else { id(code_output).turn_off(); }
+            state++;
+            if (state >= 795) state = 0;
+
+# Add Sync effects to code_effects list on boot
+esphome:
+  on_boot:
+    priority: 100
+    then:
+      - lambda: |-
+          // Insert Sync effects at the beginning of code_effects
+          id(code_effects).insert(id(code_effects).begin(), "Smart Sync Old Silence");
+          id(code_effects).insert(id(code_effects).begin(), "Smart Sync Silence");
+          id(code_effects).insert(id(code_effects).begin(), "Smart Sync March");
+          id(code_effects).insert(id(code_effects).begin(), "Smart Sync");
+          id(code_effects).insert(id(code_effects).begin(), "Shart Sync");
