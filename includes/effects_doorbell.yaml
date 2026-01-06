@@ -242,3 +242,19 @@ esphome:
         - switch.turn_off: shunt
         - switch.turn_off: reverse
         - switch.turn_off: trigger
+
+# Watchdog: turn off any outputs that get left on when no effect is running
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(code).get_effect_name() == "None" &&
+                     (id(code).current_values.is_on() || id(shunt).state || id(reverse).state || id(trigger).state);
+          then:
+            - logger.log:
+                level: WARN
+                tag: doorbell
+                format: "Watchdog: turning off stray outputs"
+            - light.turn_off: code

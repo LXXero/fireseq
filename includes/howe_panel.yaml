@@ -1,0 +1,119 @@
+# Howe Panel Output Integration (Simplex 2001)
+# Include this instead of howe_decoder.yaml for coders with panel outputs
+# This pulls in the decoder and adds panel control on top
+#
+# Required substitutions:
+#   gpio_panel_pulse: GPIO for alarm pulse output
+#   gpio_panel_alarm: GPIO for alarm hold output
+#   gpio_panel_presignal: GPIO for presignal output
+#
+# Behavior:
+#   - PRESIGNAL detected -> pulse panel_presignal + panel_pulse for ~1 second
+#   - FIRE/GA detected -> turn on panel_alarm (stays until zone clears) + pulse panel_pulse
+#   - Zone release -> turn off panel_alarm
+
+packages:
+  decoder: !include howe_decoder.yaml
+
+globals:
+  # Track which stations have already triggered presignal pulse
+  - id: presignal_pulsed_stations
+    type: std::set<std::string>
+    restore_value: false
+  # Track which stations have already triggered alarm
+  - id: alarm_triggered_stations
+    type: std::set<std::string>
+    restore_value: false
+
+binary_sensor:
+  # Zone input clears panel alarm
+  - id: !extend zone_input
+    on_release:
+      - switch.turn_off: panel_alarm
+      - lambda: |-
+          id(alarm_triggered_stations).clear();
+          id(presignal_pulsed_stations).clear();
+      - logger.log:
+          level: INFO
+          format: "Zone cleared - panel alarm reset"
+
+interval:
+  # Monitor station states for panel output control
+  - interval: 500ms
+    then:
+      - lambda: |-
+          const int STATE_PRESIGNAL = 2;
+          const int STATE_GENERAL_ALARM = 3;
+          const int STATE_FIRE = 4;
+
+          for (const auto& kv : id(station_states)) {
+            std::string station_id = kv.first;
+            int state = kv.second;
+
+            // Fire/GA: turn on alarm + pulse (once per station)
+            if (state == STATE_FIRE || state == STATE_GENERAL_ALARM) {
+              if (!id(alarm_triggered_stations).count(station_id)) {
+                id(alarm_triggered_stations).insert(station_id);
+                id(panel_alarm).turn_on();
+                id(panel_pulse_script).execute();
+              }
+            }
+
+            // Presignal: pulse briefly (once per station)
+            if (state == STATE_PRESIGNAL) {
+              if (!id(presignal_pulsed_stations).count(station_id)) {
+                id(presignal_pulsed_stations).insert(station_id);
+                id(panel_presignal).turn_on();
+                id(panel_pulse_script).execute();
+              }
+            }
+
+            // Clear from pulsed sets if state changed
+            if (state != STATE_PRESIGNAL) {
+              id(presignal_pulsed_stations).erase(station_id);
+            }
+            if (state != STATE_FIRE && state != STATE_GENERAL_ALARM) {
+              id(alarm_triggered_stations).erase(station_id);
+            }
+          }
+
+  # Turn off presignal after 1 second
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (id(panel_presignal).state) {
+            id(panel_presignal).turn_off();
+          }
+
+script:
+  - id: panel_pulse_script
+    then:
+      - output.turn_on: panel_pulse_output
+      - delay: 400ms
+      - output.turn_off: panel_pulse_output
+
+output:
+  - platform: gpio
+    pin: ${gpio_panel_pulse}
+    id: panel_pulse_output
+
+switch:
+  - platform: gpio
+    pin: ${gpio_panel_alarm}
+    id: panel_alarm
+    name: "Panel Alarm"
+
+  - platform: gpio
+    pin: ${gpio_panel_presignal}
+    id: panel_presignal
+    name: "Panel Presignal"
+
+button:
+  - platform: template
+    name: "Panel Pulse Test"
+    id: panel_pulse_test
+    on_press:
+      - script.execute: panel_pulse_script
+      - logger.log:
+          level: INFO
+          format: "Panel pulse: 400ms sent"

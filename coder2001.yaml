@@ -6,9 +6,16 @@ substitutions:
   gpio_code: 'GPIO16'
   gpio_led: 'GPIO1'
   gpio_led_invert: 'false'
-  gpio_reverse: 'GPIO13'
+  gpio_reverse: 'GPIO18'
   gpio_shunt: 'GPIO17'
   gpio_trigger: 'GPIO19'
+  # Panel outputs (Simplex 2001)
+  gpio_panel_pulse: 'GPIO23'
+  gpio_panel_alarm: 'GPIO22'
+  gpio_panel_presignal: 'GPIO21'
+  # Howe decoder inputs
+  gpio_howe_oscillator: 'GPIO26'
+  gpio_howe_signal: 'GPIO13'
   # Inputs
   gpio_doorbell: 'GPIO35'
   gpio_zone: 'GPIO33'
@@ -24,5 +31,6 @@ substitutions:
 packages:
   main: !include main.yaml
   fire: !include includes/effects_fire.yaml
+  howe: !include includes/howe_panel.yaml
   buttons: !include includes/buttons_adc.yaml
   display: !include includes/display_oled.yaml

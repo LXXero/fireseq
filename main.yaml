@@ -311,6 +311,12 @@ script:
             effect_map = { 0, "fire", id(fire_effects) };
           }
 
+          // If still empty, bail out - no effects available for this type
+          if (effect_map.list.empty()) {
+            ESP_LOGW("set_effect", "No effects available for type: %s", type.c_str());
+            return;
+          }
+
           int next_id;
 
           bool not_found = (id(effect_type) == effect_map.id && id(effect) < (int)effect_map.list.size())

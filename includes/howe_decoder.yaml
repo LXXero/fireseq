@@ -969,8 +969,8 @@ light:
 # Add Howe Follower to code_effects list on boot
 esphome:
   on_boot:
-    priority: 100
-    then:
-      - lambda: |-
-          // Insert "Howe Follower" at the beginning of code_effects
-          id(code_effects).insert(id(code_effects).begin(), "Howe Follower");
+    - priority: 100
+      then:
+        - lambda: |-
+            // Insert "Howe Follower" at the beginning of code_effects
+            id(code_effects).insert(id(code_effects).begin(), "Howe Follower");

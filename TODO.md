@@ -67,10 +67,38 @@ continuous           = special handling TBD
 
 ### Display & Integration
 - [ ] OLED display integration - show active stations with round progress
+- [ ] Howe display mode - scrollable list of recent incoming codes
+  - Switch display into "Howe mode" during transmission
+  - Show previous codes with their status
+  - Scroll through history
+- [ ] Status indicator on display header
+  - Shorten "FireSeq" or rework first line to fit status
+  - Show system state: OK / TBL / ALM / WM / FIRE
+  - Priority: FIRE > ALM > TBL > WM > OK
+  - Maybe invert for alarm states?
 - [ ] Home Assistant integration - expose stations as sensors with attributes
   - Auto-discover stations as entities
   - Track round_count, prefix, last_seen, status
   - Enable automations on station events
+
+### Panel Output Integration (Simplex 2001)
+- [x] Alarm pulse output - trigger panel on Howe alarm
+  - PC817 optocoupler + 1N4148 diode for D-bus isolation
+  - **TESTED: 400ms pulse required for Simplex 2001 alarm activation**
+  - GPIO pulse when any station goes to FIRE/ALM/GENERAL_ALARM
+- [ ] Oscillator-triggered Howe Follower workflow
+  - Oscillator start → trigger pulse output + switch to "Howe Follower" effect
+  - Code output follows incoming signal during transmission
+  - Transmission complete → determine final result (presignal/alarm)
+  - Switch code output back to previous effect (before Howe Follower)
+  - Trigger presignal or alarm output based on result
+- [ ] Steady 24V outputs for alarm/presignal level switching
+  - Pulse trips panel into alarm, level-hold determines alarm type
+  - Current: GPIO21 (alarm), GPIO22 (presignal) defined but need driver
+  - Plan: MIC2981 8-channel high-side driver to replace old FET board
+  - Keep L298 H-bridge for SmartSync (need polarity inversion, tight timing)
+- [ ] Trouble output - TBD what counts as "trouble"
+  - Watchman-only stations? Supervisory?
 
 ### Continuous Station Detection
 - [x] Continuous fire state handled (immediate FIRE, CLEAR on bus stop)
