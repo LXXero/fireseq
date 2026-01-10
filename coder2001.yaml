@@ -13,8 +13,11 @@ substitutions:
   gpio_panel_pulse: 'GPIO23'
   gpio_panel_alarm: 'GPIO22'
   gpio_panel_presignal: 'GPIO21'
+  gpio_panel_ack: 'GPIO4'
+  gpio_panel_reset: 'GPIO26'
+  gpio_panel_trouble_reset: 'GPIO2'
   # Howe decoder inputs
-  gpio_howe_oscillator: 'GPIO26'
+  gpio_howe_oscillator: 'GPIO14'
   gpio_howe_signal: 'GPIO13'
   # Inputs
   gpio_doorbell: 'GPIO35'

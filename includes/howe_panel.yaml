@@ -97,6 +97,18 @@ output:
     pin: ${gpio_panel_pulse}
     id: panel_pulse_output
 
+  - platform: gpio
+    pin: ${gpio_panel_ack}
+    id: panel_ack_output
+
+  - platform: gpio
+    pin: ${gpio_panel_reset}
+    id: panel_reset_output
+
+  - platform: gpio
+    pin: ${gpio_panel_trouble_reset}
+    id: panel_trouble_reset_output
+
 switch:
   - platform: gpio
     pin: ${gpio_panel_alarm}
@@ -117,3 +129,28 @@ button:
       - logger.log:
           level: INFO
           format: "Panel pulse: 400ms sent"
+
+  - platform: template
+    name: "Remote Ack"
+    id: panel_remote_ack
+    on_press:
+      - output.turn_on: panel_ack_output
+      - delay: 400ms
+      - output.turn_off: panel_ack_output
+      - logger.log:
+          level: INFO
+          format: "Remote ack: 400ms sent"
+
+  - platform: template
+    name: "Remote Reset"
+    id: panel_remote_reset
+    on_press:
+      - output.turn_on: panel_reset_output
+      - delay: 2s
+      - output.turn_off: panel_reset_output
+      - output.turn_on: panel_trouble_reset_output
+      - delay: 400ms
+      - output.turn_off: panel_trouble_reset_output
+      - logger.log:
+          level: INFO
+          format: "Remote reset: 2s + trouble 400ms sent"
