@@ -156,3 +156,14 @@ button:
       - logger.log:
           level: INFO
           format: "Remote reset: 2s + trouble 400ms sent"
+
+  - platform: template
+    name: "Trouble Reset"
+    id: panel_trouble_reset
+    on_press:
+      - output.turn_on: panel_trouble_reset_output
+      - delay: 750ms
+      - output.turn_off: panel_trouble_reset_output
+      - logger.log:
+          level: INFO
+          format: "Trouble reset: 750ms sent"
