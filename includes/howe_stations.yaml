@@ -93,6 +93,7 @@ esphome:
 
             // Waterflow stations
             ADD_STATION("X-X-2-9", "Waterflow Switch", "", "waterflow");
+            ADD_STATION("X-1-3-1", "Waterflow Switch (Small)", "", "waterflow");
 
             // Repurposed waterflow -> fire
             ADD_STATION("X-X-2-5", "Repurposed Waterflow", "", "waterflow");
