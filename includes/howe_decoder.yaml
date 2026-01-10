@@ -279,14 +279,81 @@ binary_sensor:
                        code.c_str(), round, prefix, station_id.c_str());
             }
 
+            // State constants
+            const int STATE_UNKNOWN = 0;
+            const int STATE_CLEAR = 1;
+            const int STATE_PRESIGNAL = 2;
+            const int STATE_GENERAL_ALARM = 3;
+            const int STATE_FIRE = 4;
+            const int STATE_WATERFLOW = 5;
+            const int STATE_WATCHMAN = 6;
+
             // Continuous station: immediately set FIRE on first round, update last_seen timestamp
             if (is_continuous) {
-              const int STATE_FIRE = 4;
               id(continuous_last_seen)[station_id] = millis();
-              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : 0;
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
               if (prior_state != STATE_FIRE) {
                 ESP_LOGI("howe", "  STATE: %s: CONTINUOUS FIRE (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_FIRE;
+              }
+            }
+
+            // V-station: immediate state from prefix (single round, prefix determines alarm vs reset)
+            else if (mode == "v_alarm") {
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+              if (prior_state != STATE_FIRE) {
+                ESP_LOGI("howe", "  STATE: %s: V-STATION FIRE (immediate)", station_id.c_str());
+                id(station_states)[station_id] = STATE_FIRE;
+              }
+            }
+            else if (mode == "v_reset") {
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+              if (prior_state != STATE_CLEAR) {
+                ESP_LOGI("howe", "  STATE: %s: V-STATION CLEAR (immediate)", station_id.c_str());
+                id(station_states)[station_id] = STATE_CLEAR;
+              }
+            }
+
+            // Watchman: always single round, immediate state
+            else if (mode == "watchman") {
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+              if (prior_state != STATE_WATCHMAN) {
+                ESP_LOGI("howe", "  STATE: %s: WATCHMAN (immediate)", station_id.c_str());
+                id(station_states)[station_id] = STATE_WATCHMAN;
+              }
+            }
+
+            // General Alarm: immediate (requires break glass + key turn, no ambiguity)
+            else if (mode == "general_alarm") {
+              int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+              if (prior_state != STATE_GENERAL_ALARM) {
+                ESP_LOGI("howe", "  STATE: %s: GENERAL_ALARM (immediate)", station_id.c_str());
+                id(station_states)[station_id] = STATE_GENERAL_ALARM;
+              }
+            }
+
+            // Predictive: round 2+ means definitely alarm (resets are always 1 round)
+            else if (round >= 2) {
+              int new_state = STATE_UNKNOWN;
+              const char* state_name = "";
+
+              if (mode == "fire") {
+                new_state = STATE_FIRE;
+                state_name = "FIRE";
+              } else if (mode == "presignal") {
+                new_state = STATE_PRESIGNAL;
+                state_name = "PRESIGNAL";
+              } else if (mode == "waterflow") {
+                new_state = STATE_WATERFLOW;
+                state_name = "WATERFLOW";
+              }
+
+              if (new_state != STATE_UNKNOWN) {
+                int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+                if (prior_state != new_state) {
+                  ESP_LOGI("howe", "  STATE: %s: %s (predictive @ round %d)", station_id.c_str(), state_name, round);
+                  id(station_states)[station_id] = new_state;
+                }
               }
             }
 

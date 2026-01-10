@@ -50,21 +50,19 @@ interval:
             std::string station_id = kv.first;
             int state = kv.second;
 
-            // Fire/GA: turn on alarm + pulse (once per station)
+            // Fire/GA: turn on alarm (pulse triggered by switch on_turn_on)
             if (state == STATE_FIRE || state == STATE_GENERAL_ALARM) {
               if (!id(alarm_triggered_stations).count(station_id)) {
                 id(alarm_triggered_stations).insert(station_id);
                 id(panel_alarm).turn_on();
-                id(panel_pulse_script).execute();
               }
             }
 
-            // Presignal: pulse briefly (once per station)
+            // Presignal: turn on (pulse triggered by switch on_turn_on)
             if (state == STATE_PRESIGNAL) {
               if (!id(presignal_pulsed_stations).count(station_id)) {
                 id(presignal_pulsed_stations).insert(station_id);
                 id(panel_presignal).turn_on();
-                id(panel_pulse_script).execute();
               }
             }
 
@@ -114,11 +112,15 @@ switch:
     pin: ${gpio_panel_alarm}
     id: panel_alarm
     name: "Panel Alarm"
+    on_turn_on:
+      - script.execute: panel_pulse_script
 
   - platform: gpio
     pin: ${gpio_panel_presignal}
     id: panel_presignal
     name: "Panel Presignal"
+    on_turn_on:
+      - script.execute: panel_pulse_script
 
 button:
   - platform: template
