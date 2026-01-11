@@ -790,6 +790,12 @@ interval:
                 else if (prefix == 3) mode = "general_alarm";
               }
 
+              // Check for prefix override
+              std::string override_key = target_station_id + ":" + std::to_string(prefix);
+              if (id(station_prefix_overrides).count(override_key)) {
+                mode = id(station_prefix_overrides)[override_key];
+              }
+
               // Check if this is a continuous station (b_combo/b_fire with fire prefix)
               bool is_continuous_fire = (type == "b_combo" || type == "b_fire") && prefix == 1;
 

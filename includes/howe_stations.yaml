@@ -88,6 +88,10 @@ esphome:
             // B Fire-only (continuous)
             ADD_STATION("3-2-2-4", "Fire Loaf", "", "b_fire");
 
+            // B Fire rewired as watchman
+            ADD_STATION("1-4", "1960s Phone Watch Station", "", "b_fire");
+            OVERRIDE_PREFIX("1-4", 2, "watchman");
+
             // B Fire-only Presignal
             ADD_STATION("X-2-6", "B Fire Presignal", "", "b_fire_presignal");
 
