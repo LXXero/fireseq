@@ -122,6 +122,18 @@ globals:
     type: std::set<std::string>
     restore_value: false
 
+  # Flag to indicate states changed and need to be saved/published
+  - id: howe_states_dirty
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+text_sensor:
+  - platform: template
+    id: howe_station_states_text
+    name: "Howe Station States"
+    icon: mdi:fire-alert
+
 binary_sensor:
   # Signal input - edge detection for reliable mark counting
   - platform: gpio
@@ -206,11 +218,16 @@ binary_sensor:
 
           // ===== HELPER: Interpret round count based on mode =====
           auto interpret_status = [](const std::string& mode, int rounds) -> std::string {
-            if (mode == "fire" || mode == "waterflow") {
+            if (mode == "fire") {
               if (rounds == 5) return "ALARM";
               if (rounds == 1) return "RESET";
               if (rounds == 6) return "ALARM+RESET";
               return "ACTIVE";  // Still transmitting
+            } else if (mode == "waterflow") {
+              if (rounds == 5) return "ALARM";
+              if (rounds == 1) return "RESET";
+              // Don't show ALARM+RESET at round 6 - wait for summary to determine vs TAMPER
+              return "ACTIVE";
             } else if (mode == "presignal") {
               // Presignal uses same 5/1/6 logic but different label
               if (rounds == 5) return "PRESIGNAL";
@@ -287,6 +304,7 @@ binary_sensor:
             const int STATE_FIRE = 4;
             const int STATE_WATERFLOW = 5;
             const int STATE_WATCHMAN = 6;
+            const int STATE_TAMPER = 7;
 
             // Continuous station: immediately set FIRE on first round, update last_seen timestamp
             if (is_continuous) {
@@ -295,6 +313,7 @@ binary_sensor:
               if (prior_state != STATE_FIRE) {
                 ESP_LOGI("howe", "  STATE: %s: CONTINUOUS FIRE (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_FIRE;
+                id(howe_states_dirty) = true;
               }
             }
 
@@ -304,6 +323,7 @@ binary_sensor:
               if (prior_state != STATE_FIRE) {
                 ESP_LOGI("howe", "  STATE: %s: V-STATION FIRE (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_FIRE;
+                id(howe_states_dirty) = true;
               }
             }
             else if (mode == "v_reset") {
@@ -311,6 +331,7 @@ binary_sensor:
               if (prior_state != STATE_CLEAR) {
                 ESP_LOGI("howe", "  STATE: %s: V-STATION CLEAR (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_CLEAR;
+                id(howe_states_dirty) = true;
               }
             }
 
@@ -320,6 +341,7 @@ binary_sensor:
               if (prior_state != STATE_WATCHMAN) {
                 ESP_LOGI("howe", "  STATE: %s: WATCHMAN (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_WATCHMAN;
+                id(howe_states_dirty) = true;
               }
             }
 
@@ -329,6 +351,7 @@ binary_sensor:
               if (prior_state != STATE_GENERAL_ALARM) {
                 ESP_LOGI("howe", "  STATE: %s: GENERAL_ALARM (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_GENERAL_ALARM;
+                id(howe_states_dirty) = true;
               }
             }
 
@@ -344,8 +367,14 @@ binary_sensor:
                 new_state = STATE_PRESIGNAL;
                 state_name = "PRESIGNAL";
               } else if (mode == "waterflow") {
-                new_state = STATE_WATERFLOW;
-                state_name = "WATERFLOW";
+                // Waterflow 7+ rounds = tamper (continuous transmission)
+                if (round >= 7) {
+                  new_state = STATE_TAMPER;
+                  state_name = "TAMPER";
+                } else {
+                  new_state = STATE_WATERFLOW;
+                  state_name = "WATERFLOW";
+                }
               }
 
               if (new_state != STATE_UNKNOWN) {
@@ -353,6 +382,7 @@ binary_sensor:
                 if (prior_state != new_state) {
                   ESP_LOGI("howe", "  STATE: %s: %s (predictive @ round %d)", station_id.c_str(), state_name, round);
                   id(station_states)[station_id] = new_state;
+                  id(howe_states_dirty) = true;
                 }
               }
             }
@@ -377,6 +407,20 @@ binary_sensor:
 
                 // Skip if already summarized or hasn't missed full rotation
                 if (id(interim_summarized).count(sid) || missed < active_count) continue;
+
+                // Waterflow with 6+ rounds: wait 2 full rotations before interim
+                // This avoids premature ALARM+RESET when it might be TAMPER (7+ rounds)
+                if (id(station_types).count(sid) && id(station_types)[sid] == "waterflow") {
+                  int rounds_for_station = 0;
+                  for (const auto& sc : id(howe_station_counts)) {
+                    // Code format is "prefix-station_id", extract station_id
+                    size_t dash = sc.first.find('-');
+                    if (dash != std::string::npos && sc.first.substr(dash + 1) == sid) {
+                      rounds_for_station = std::max(rounds_for_station, sc.second);
+                    }
+                  }
+                  if (rounds_for_station >= 6 && missed < active_count * 2) continue;
+                }
 
                 // Queue for interim summary (processed in interval lambda)
                 id(pending_interim_summary).insert(sid);
@@ -563,6 +607,7 @@ interval:
           const int STATE_FIRE = 4;
           const int STATE_WATERFLOW = 5;
           const int STATE_WATCHMAN = 6;
+          const int STATE_TAMPER = 7;
 
           auto state_name = [](int state) -> std::string {
             switch (state) {
@@ -573,6 +618,7 @@ interval:
               case 4: return "FIRE";
               case 5: return "WATERFLOW";
               case 6: return "WATCHMAN";
+              case 7: return "TAMPER";
               default: return "INVALID";
             }
           };
@@ -585,13 +631,26 @@ interval:
 
           auto save_states = [&]() {
             std::string out;
+            std::string readable;
             for (const auto& kv : id(station_states)) {
               if (!out.empty()) out += ',';
               out += strip_dashes(kv.first);
               out += ('0' + kv.second);
+
+              // Build human-readable version
+              if (!readable.empty()) readable += ", ";
+              std::string name = id(station_names).count(kv.first) ? id(station_names)[kv.first] : kv.first;
+              readable += name + ": " + state_name(kv.second);
             }
             id(station_states_str) = out;
+            id(howe_station_states_text).publish_state(readable);
           };
+
+          // Check if states changed from log_round (predictive logic) and need saving
+          if (id(howe_states_dirty)) {
+            save_states();
+            id(howe_states_dirty) = false;
+          }
 
           // ===== HELPER: Summarize a single station (used for both interim and final) =====
           auto summarize_station = [&](const std::string& target_station_id, bool is_interim) {
@@ -801,8 +860,14 @@ interval:
 
               // Get status (continuous stations always show ALARM, not round-based)
               std::string status = "";
-              if (mode == "fire" || mode == "waterflow") {
+              if (mode == "fire") {
                 if (is_continuous_fire) status = "ALARM";
+                else if (rounds == 5) status = "ALARM";
+                else if (rounds == 1) status = "RESET";
+                else if (rounds == 6) status = "ALARM+RESET";
+                else status = "ACTIVE";
+              } else if (mode == "waterflow") {
+                if (rounds >= 7) status = "TAMPER";
                 else if (rounds == 5) status = "ALARM";
                 else if (rounds == 1) status = "RESET";
                 else if (rounds == 6) status = "ALARM+RESET";
@@ -838,7 +903,9 @@ interval:
                   new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_FIRE;
                 }
               } else if (mode == "waterflow") {
-                new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_WATERFLOW;
+                if (rounds >= 7) new_state = STATE_TAMPER;
+                else if (rounds == 1 || rounds == 6) new_state = STATE_CLEAR;
+                else new_state = STATE_WATERFLOW;
               } else if (mode == "watchman") {
                 new_state = STATE_WATCHMAN;
               } else if (mode == "reset") {
@@ -867,9 +934,30 @@ interval:
           if (id(howe_in_transmission) && !id(pending_interim_summary).empty()) {
             for (const std::string& sid : id(pending_interim_summary)) {
               if (!id(interim_summarized).count(sid)) {
-                summarize_station(sid, true);
+                // Check if station was in TAMPER state - if it stopped, clear it
+                int prior_state = id(station_states).count(sid) ? id(station_states)[sid] : STATE_UNKNOWN;
+                if (prior_state == STATE_TAMPER) {
+                  ESP_LOGI("howe", "  STATE: %s: TAMPER -> CLEAR (stopped transmitting)", sid.c_str());
+                  id(station_states)[sid] = STATE_CLEAR;
+                  save_states();
+                } else {
+                  summarize_station(sid, true);
+                  save_states();
+                }
                 id(interim_summarized).insert(sid);
-                save_states();
+
+                // Clear this station's counts so it starts fresh if it comes back
+                std::vector<std::string> keys_to_remove;
+                for (const auto& sc : id(howe_station_counts)) {
+                  size_t dash = sc.first.find('-');
+                  if (dash != std::string::npos && sc.first.substr(dash + 1) == sid) {
+                    keys_to_remove.push_back(sc.first);
+                  }
+                }
+                for (const auto& key : keys_to_remove) {
+                  id(howe_station_counts).erase(key);
+                }
+                id(rounds_since_seen).erase(sid);
               }
             }
             id(pending_interim_summary).clear();
@@ -936,7 +1024,7 @@ interval:
                   int state = record.back() - '0';
                   std::string station_compact = record.substr(0, record.length() - 1);
                   std::string station_id = add_dashes(station_compact);
-                  if (state >= 0 && state <= 6) {
+                  if (state >= 0 && state <= 7) {  // 7 = TAMPER
                     id(station_states)[station_id] = state;
                     ESP_LOGI("howe", "Restored state: %s = %s", station_id.c_str(), state_name(state).c_str());
                   }
@@ -945,6 +1033,7 @@ interval:
                 pos = comma + 1;
               }
               states_restored = true;
+              save_states();  // Publish to text sensor
             }
 
             // Collect unique station IDs from this transmission
@@ -970,6 +1059,15 @@ interval:
               if (prior_state == STATE_FIRE) {
                 ESP_LOGI("howe", "  STATE: %s: FIRE -> CLEAR (continuous stopped)", station_id.c_str());
                 id(station_states)[station_id] = STATE_CLEAR;
+              }
+            }
+
+            // Check tamper stations: bus stopped = tamper condition resolved
+            // If a station was TAMPER and the bus is now quiet, it cleared
+            for (const auto& kv : id(station_states)) {
+              if (kv.second == STATE_TAMPER) {
+                ESP_LOGI("howe", "  STATE: %s: TAMPER -> CLEAR (stopped transmitting)", kv.first.c_str());
+                id(station_states)[kv.first] = STATE_CLEAR;
               }
             }
 
