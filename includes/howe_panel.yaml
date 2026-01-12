@@ -9,8 +9,8 @@
 #
 # Behavior:
 #   - PRESIGNAL detected -> pulse panel_presignal + panel_pulse for ~1 second
-#   - FIRE/GA detected -> turn on panel_alarm (stays until zone clears) + pulse panel_pulse
-#   - Zone release -> turn off panel_alarm
+#   - FIRE/GA detected -> pulse panel_alarm + panel_pulse for ~1 second
+#   - Panel latches internally, ack/reset handled by panel
 
 packages:
   decoder: !include howe_decoder.yaml
@@ -25,17 +25,6 @@ globals:
     type: std::set<std::string>
     restore_value: false
 
-binary_sensor:
-  # Zone input clears panel alarm
-  - id: !extend zone_input
-    on_release:
-      - switch.turn_off: panel_alarm
-      - lambda: |-
-          id(alarm_triggered_stations).clear();
-          id(presignal_pulsed_stations).clear();
-      - logger.log:
-          level: INFO
-          format: "Zone cleared - panel alarm reset"
 
 interval:
   # Monitor station states for panel output control
@@ -75,12 +64,15 @@ interval:
             }
           }
 
-  # Turn off presignal after 1 second
+  # Turn off presignal/alarm outputs after 1 second (pulse, don't hold)
   - interval: 1s
     then:
       - lambda: |-
           if (id(panel_presignal).state) {
             id(panel_presignal).turn_off();
+          }
+          if (id(panel_alarm).state) {
+            id(panel_alarm).turn_off();
           }
 
 script:
@@ -151,11 +143,11 @@ button:
       - delay: 2s
       - output.turn_off: panel_reset_output
       - output.turn_on: panel_trouble_reset_output
-      - delay: 400ms
+      - delay: 750ms
       - output.turn_off: panel_trouble_reset_output
       - logger.log:
           level: INFO
-          format: "Remote reset: 2s + trouble 400ms sent"
+          format: "Remote reset: 2s + trouble 750ms sent"
 
   - platform: template
     name: "Trouble Reset"

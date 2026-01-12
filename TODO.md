@@ -32,7 +32,8 @@
 
 ### Station Database
 - [x] Station database implemented in howe_stations.yaml
-- [x] Data model with prefix->mode mappings per station type
+- [x] ESPHome custom component (howe_stations) with YAML schema
+- [x] Per-station `continuous` and `tamper` flags
 - [x] Decoder integration with enriched logging
 
 #### Data Model Reference
@@ -41,14 +42,14 @@ Prefix indicates MODE, not part of station identity.
 
 **Station Types & Prefix Mappings:**
 ```
-bj_combo             = 1:watchman, 2:fire
-bj_combo_presignal   = 1:watchman, 2:presignal, 3:general_alarm
-bj_fire              = 1:fire (5 rounds alarm, 1 reset)
-b_combo              = 1:fire (continuous), 2:watchman OR reset (if fire active)
-b_fire               = 1:fire (continuous)
-b_fire_presignal     = 2:presignal, 3:general_alarm
-waterflow            = 3:waterflow (5 rounds alarm, 1 reset)
-v_station            = 5:alarm, 6:reset (single round each)
+combo_5round      = 1:watchman, 2:fire (5-round). Usually BJ stations.
+combo_continuous  = 1:fire (continuous), 2:watchman/reset. Usually B stations.
+combo_presignal   = 1:watchman, 2:presignal, 3:GA. Usually BJ stations.
+fire_5round       = 1/2:fire (5-round). Can be B or BJ stations.
+fire_continuous   = 1:fire (continuous). Usually B stations.
+fire_presignal    = 2:presignal, 3:GA. Can be B or BJ stations.
+fire_v            = 5:alarm, 6:reset (single round). Usually B stations (V133, etc).
+waterflow         = 3:waterflow (tamper=true by default). Usually B stations.
 ```
 
 **Round Count Logic (most modes):**
@@ -58,11 +59,15 @@ v_station            = 5:alarm, 6:reset (single round each)
 
 **Exceptions:**
 - Watchman: always 1 round (no alarm/reset distinction)
-- V-stations: always 1 round, prefix determines alarm (5) vs reset (6)
-- Continuous (B-types with prefix 1): transmit continuously while active
+- V-stations (fire_v): always 1 round, prefix determines alarm (5) vs reset (6)
+- Continuous stations (continuous=true): transmit continuously while active
   - Immediate FIRE state on first round
   - CLEAR state when bus stops (detected via interim summary)
   - No round counting - presence = alarm, absence = clear
+  - Combo: prefix 2 becomes "reset" if fire was active, otherwise watchman
+- Tamper detection (tamper=true, default for waterflow): 7+ rounds = TAMPER
+  - Mutually exclusive with continuous (can't be both)
+  - TAMPER clears when station stops transmitting
 
 **Presignal Behavior:**
 - Prefix 2 = presignal (early warning, limited response)
@@ -103,7 +108,7 @@ v_station            = 5:alarm, 6:reset (single round each)
   - Works from both Howe decoder AND manual HA toggle
 - [x] Remote Ack output (GPIO4) - 400ms pulse
 - [x] Remote Reset output (GPIO26) - 2s pulse
-- [x] Trouble Reset output (GPIO2) - 400ms pulse after main reset
+- [x] Trouble Reset output (GPIO2) - 750ms pulse after main reset
   - GPIO2 used (held LOW at boot, safe for MIC2981)
 - [ ] Oscillator-triggered Howe Follower workflow
   - Oscillator start → trigger pulse output + switch to "Howe Follower" effect
@@ -127,22 +132,21 @@ v_station            = 5:alarm, 6:reset (single round each)
 6 = Reset (V-stations only, single round)
 ```
 
-### Transmitter Types
+### Transmitter Types (Physical)
 ```
-B  = Howe-in-a-can with terminal blocks (continuous fire, no round wheel)
-     - Combo: prefix 1=fire (continuous), prefix 2=watchman or reset
-     - Fire-only: prefix 1=fire (continuous)
-     - Fire-Presignal: prefix 2=presignal, prefix 3=general alarm
-     - Prefixes flipped vs BJ types
+B  = Howe-in-a-can with terminal blocks
+     - Usually continuous fire (no round wheel), but some are 5-round
+     - combo_continuous, fire_continuous, fire_5round, fire_presignal, fire_v, waterflow
 BX = Howe-in-a-can with molex (Federal Signal era)
-BJ = Horizontal mount with banana plug pins (5-round capable)
-     - Combo: prefix 1=watchman, prefix 2=fire (5 rounds alarm, 1 reset)
-     - Fire-only: prefix 1=fire (5 rounds alarm, 1 reset)
-     - Presignal variants add prefix 2=presignal, prefix 3=general alarm
+BJ = Horizontal mount with banana plug pins
+     - Usually 5-round capable (has round wheel)
+     - combo_5round, combo_presignal, fire_5round
 ```
+Note: Physical type (B/BJ) doesn't strictly determine behavior.
+Use station type + continuous/tamper flags to configure actual behavior.
 
 ## Notes
 
-- 2-1-2-1-2: 1930s phone box (Type B)
-- 2-2-1-2: 1930s round station (Type B)
+- 1-2-1-2: 1930s Phone Combo Station (Type B)
+- 2-1-2: 1930s Round Combo Station (Type B)
 

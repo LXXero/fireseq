@@ -1,0 +1,100 @@
+# Howe Station Database
+# Clean YAML format - no embedded C++ macros
+#
+# Station Types:
+#   combo_5round     - prefix 1=watchman, prefix 2=fire (5-round)
+#   combo_continuous - prefix 1=fire (continuous), prefix 2=watchman/reset
+#   combo_presignal  - prefix 1=watchman, prefix 2=presignal, prefix 3=GA
+#   fire_5round      - prefix 1/2=fire (5-round)
+#   fire_continuous  - prefix 1=fire (continuous)
+#   fire_presignal   - prefix 2=presignal, prefix 3=GA
+#   fire_v           - prefix 5=alarm, prefix 6=reset (single round)
+#   waterflow        - prefix 3=waterflow (tamper=true by default)
+#
+# Optional fields:
+#   location   - physical location description
+#   continuous - override default (true for fire_continuous/combo_continuous)
+#   tamper     - override default (true for waterflow only)
+#   overrides  - remap prefix to different mode
+#
+# Round count (5-round modes):
+#   5 rounds = ALARM
+#   1 round  = RESET
+#   6 rounds = ALARM+RESET
+#   7+ rounds = TAMPER (if tamper=true)
+#
+howe_stations:
+    # Fire-only 5-round stations
+    "9-X-5-2":
+      name: "BJ Fire Station"
+      type: fire_5round
+
+    "4-1":
+      name: "Weather Lever Fire Station"  # B27 - Non-BTG pull lever, flip-switch restore
+      type: fire_5round
+
+    # Combo Fire & Watch 5-round stations
+    "1-4-5":
+      name: "Master Combo Station (1940s)"
+      type: combo_5round
+
+    "4-3-1-2":
+      name: "Art Deco Combo Station"
+      type: combo_5round
+
+    "2-4-2":
+      name: "Weather Combo Station"
+      type: combo_5round
+
+    # Combo Presignal station
+    "2-3-3-4":
+      name: "BJ Combo Presignal"
+      type: combo_presignal
+
+    # Combo Fire & Watch continuous stations
+    "1-2-1-2":
+      name: "1930s Phone Combo Station"
+      type: combo_continuous
+
+    "2-1-2":
+      name: "1930s Round Combo Station"
+      type: combo_continuous
+
+    # Fire-only continuous stations
+    "3-2-2-4":
+      name: "Fire Loaf"
+      type: fire_continuous
+
+    # Fire continuous rewired as watchman
+    "1-4":
+      name: "1960s Phone Watch Station"
+      type: fire_continuous
+      overrides:
+        2: watchman
+
+    # Fire Presignal station
+    "X-2-6":
+      name: "B Fire Presignal"
+      type: fire_presignal
+
+    # Waterflow stations
+    "X-X-2-9":
+      name: "Waterflow Switch"
+      type: waterflow
+
+    "X-1-3-1":
+      name: "Waterflow Switch 2"
+      type: waterflow
+
+    # Repurposed waterflow -> fire
+    "X-X-2-5":
+      name: "Repurposed Waterflow"
+      type: waterflow
+      tamper: false
+      overrides:
+        3: fire
+
+    # V-type stations
+    "1-3-3":
+      name: "Round V-Type Fire Station"
+      type: fire_v

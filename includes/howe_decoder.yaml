@@ -1,8 +1,16 @@
-# Include station database (optional, but pulled in automatically)
-packages:
-  stations: !include howe_stations.yaml
-
 # Howe Transmitter Decoder
+# Requires howe_stations component for station database
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [howe_stations]
+
+# Include station database
+packages:
+  stations: !include ../howe_stations.yaml
+
 # Decodes pulse codes from Autocall-Howe fire alarm transmitters
 #
 # Requires substitutions:
@@ -69,15 +77,31 @@ globals:
   - id: station_names
     type: std::map<std::string, std::string>
     restore_value: false
+    initial_value: 'std::map<std::string, std::string>()'
   - id: station_locations
     type: std::map<std::string, std::string>
     restore_value: false
+    initial_value: 'std::map<std::string, std::string>()'
   - id: station_types
     type: std::map<std::string, std::string>
     restore_value: false
+    initial_value: 'std::map<std::string, std::string>()'
   - id: station_prefix_overrides
     type: std::map<std::string, std::string>
     restore_value: false
+    initial_value: 'std::map<std::string, std::string>()'
+
+  # Per-station continuous flag (true = transmits continuously while active)
+  - id: station_continuous
+    type: std::map<std::string, bool>
+    restore_value: false
+    initial_value: 'std::map<std::string, bool>()'
+
+  # Per-station tamper flag (true = 7+ rounds triggers TAMPER state)
+  - id: station_tamper
+    type: std::map<std::string, bool>
+    restore_value: false
+    initial_value: 'std::map<std::string, bool>()'
 
   # Track presignal count when general_alarm first occurred for each station
   # -1 = no general alarm seen, >= 0 = presignal count at time of general alarm
@@ -188,30 +212,28 @@ binary_sensor:
 
           // ===== HELPER: Get mode for station type and prefix =====
           auto get_default_mode = [](const std::string& type, int prefix) -> std::string {
-            if (type == "bj_combo") {
+            if (type == "combo_5round") {
               if (prefix == 1) return "watchman";
               if (prefix == 2) return "fire";
-            } else if (type == "bj_combo_presignal") {
+            } else if (type == "combo_presignal") {
               if (prefix == 1) return "watchman";
               if (prefix == 2) return "presignal";
               if (prefix == 3) return "general_alarm";
-            } else if (type == "bj_fire") {
-              if (prefix == 1 || prefix == 2) return "fire";
-            } else if (type == "b_combo") {
+            } else if (type == "combo_continuous") {
               if (prefix == 1) return "fire";
               if (prefix == 2) return "watchman";
-            } else if (type == "b_fire") {
+            } else if (type == "fire_5round") {
+              if (prefix == 1 || prefix == 2) return "fire";
+            } else if (type == "fire_continuous") {
               if (prefix == 1) return "fire";
-            } else if (type == "b_fire_presignal") {
+            } else if (type == "fire_presignal") {
               if (prefix == 2) return "presignal";
               if (prefix == 3) return "general_alarm";
-            } else if (type == "waterflow") {
-              if (prefix == 3) return "waterflow";
-            } else if (type == "v_station") {
+            } else if (type == "fire_v") {
               if (prefix == 5) return "v_alarm";
               if (prefix == 6) return "v_reset";
-            } else if (type == "continuous") {
-              return "continuous";
+            } else if (type == "waterflow") {
+              if (prefix == 3) return "waterflow";
             }
             return "unknown";
           };
@@ -278,8 +300,8 @@ binary_sensor:
               ESP_LOGD("howe", "  TRACK: GA fired, presignal_code=%s count=%d", presignal_code.c_str(), presignal_count);
             }
 
-            // Continuous station handling: b_combo or b_fire with prefix 1 = continuous fire
-            bool is_continuous = (type == "b_combo" || type == "b_fire") && prefix == 1;
+            // Continuous station handling: use station_continuous flag, but only for fire mode
+            bool is_continuous = id(station_continuous).count(station_id) && id(station_continuous)[station_id] && mode == "fire";
 
             // Interpret status from round count (continuous stations always show ALARM)
             std::string status = is_continuous ? "ALARM" : interpret_status(mode, round);
@@ -360,21 +382,20 @@ binary_sensor:
               int new_state = STATE_UNKNOWN;
               const char* state_name = "";
 
-              if (mode == "fire") {
+              // Check tamper first (7+ rounds on any station with tamper enabled)
+              bool has_tamper = id(station_tamper).count(station_id) && id(station_tamper)[station_id];
+              if (has_tamper && round >= 7) {
+                new_state = STATE_TAMPER;
+                state_name = "TAMPER";
+              } else if (mode == "fire") {
                 new_state = STATE_FIRE;
                 state_name = "FIRE";
               } else if (mode == "presignal") {
                 new_state = STATE_PRESIGNAL;
                 state_name = "PRESIGNAL";
               } else if (mode == "waterflow") {
-                // Waterflow 7+ rounds = tamper (continuous transmission)
-                if (round >= 7) {
-                  new_state = STATE_TAMPER;
-                  state_name = "TAMPER";
-                } else {
-                  new_state = STATE_WATERFLOW;
-                  state_name = "WATERFLOW";
-                }
+                new_state = STATE_WATERFLOW;
+                state_name = "WATERFLOW";
               }
 
               if (new_state != STATE_UNKNOWN) {
@@ -673,7 +694,7 @@ interval:
               int prefix = std::stoi(code.substr(0, first_dash));
               codes_for_station.push_back({code, rounds});
 
-              if (type == "bj_combo_presignal" || type == "b_fire_presignal") {
+              if (type == "combo_presignal" || type == "fire_presignal") {
                 if (prefix == 2) presignal_rounds = rounds;
                 if (prefix == 3) general_rounds = rounds;
               }
@@ -685,15 +706,16 @@ interval:
               ESP_LOGI("howe", "=== Interim summary ===");
             }
 
-            // Handle continuous stations (b_combo/b_fire with prefix 1): if interim, they stopped -> CLEAR
-            if ((type == "b_combo" || type == "b_fire") && is_interim) {
+            // Handle continuous stations: if interim, they stopped -> CLEAR
+            bool station_is_continuous = id(station_continuous).count(target_station_id) && id(station_continuous)[target_station_id];
+            if (station_is_continuous && is_interim) {
               // Find total rounds for logging
               int total_rounds = 0;
               std::string code_for_log;
               for (const auto& cp : codes_for_station) {
                 size_t dash = cp.first.find('-');
                 int pfx = std::stoi(cp.first.substr(0, dash));
-                if (pfx == 1) {  // Fire prefix for b_combo/b_fire
+                if (pfx == 1) {  // Fire prefix for continuous stations
                   total_rounds = cp.second;
                   code_for_log = cp.first;
                   break;
@@ -709,7 +731,7 @@ interval:
             }
 
             // Handle presignal+GA combo stations specially
-            if ((type == "bj_combo_presignal" || type == "b_fire_presignal") &&
+            if ((type == "combo_presignal" || type == "fire_presignal") &&
                 (presignal_rounds > 0 || general_rounds > 0)) {
 
               int total = presignal_rounds + general_rounds;
@@ -801,14 +823,15 @@ interval:
             }
 
             // Standard handling for non-presignal modes
-            // First, check if b_combo had fire (prefix 1) in this transmission
-            // This determines if prefix 2 is watchman vs reset
-            bool b_combo_had_fire = false;
-            if (type == "b_combo") {
+            // First, check if continuous station had fire (prefix 1) in this transmission
+            // This determines if prefix 2 is watchman vs reset (only combos have prefix 2)
+            bool continuous_had_fire = false;
+            bool is_continuous_type = id(station_continuous).count(target_station_id) && id(station_continuous)[target_station_id];
+            if (is_continuous_type) {
               for (const auto& cp : codes_for_station) {
                 size_t dash = cp.first.find('-');
                 if (dash != std::string::npos && std::stoi(cp.first.substr(0, dash)) == 1) {
-                  b_combo_had_fire = true;
+                  continuous_had_fire = true;
                   break;
                 }
               }
@@ -822,31 +845,31 @@ interval:
 
               // Get mode
               std::string mode = "unknown";
-              if (type == "bj_combo") {
+              if (type == "combo_5round") {
                 if (prefix == 1) mode = "watchman";
                 else if (prefix == 2) mode = "fire";
-              } else if (type == "bj_fire") {
-                if (prefix == 1 || prefix == 2) mode = "fire";
-              } else if (type == "b_combo") {
+              } else if (type == "combo_continuous") {
                 if (prefix == 1) mode = "fire";
                 else if (prefix == 2) {
                   // If fire was active this transmission, prefix 2 = reset, not watchman
-                  mode = b_combo_had_fire ? "reset" : "watchman";
+                  mode = continuous_had_fire ? "reset" : "watchman";
                 }
-              } else if (type == "b_fire") {
-                if (prefix == 1) mode = "fire";
-              } else if (type == "waterflow") {
-                if (prefix == 3) mode = "waterflow";
-              } else if (type == "v_station") {
-                if (prefix == 5) mode = "v_alarm";
-                else if (prefix == 6) mode = "v_reset";
-              } else if (type == "bj_combo_presignal") {
+              } else if (type == "combo_presignal") {
                 if (prefix == 1) mode = "watchman";
                 else if (prefix == 2) mode = "presignal";
                 else if (prefix == 3) mode = "general_alarm";
-              } else if (type == "b_fire_presignal") {
+              } else if (type == "fire_5round") {
+                if (prefix == 1 || prefix == 2) mode = "fire";
+              } else if (type == "fire_continuous") {
+                if (prefix == 1) mode = "fire";
+              } else if (type == "fire_presignal") {
                 if (prefix == 2) mode = "presignal";
                 else if (prefix == 3) mode = "general_alarm";
+              } else if (type == "fire_v") {
+                if (prefix == 5) mode = "v_alarm";
+                else if (prefix == 6) mode = "v_reset";
+              } else if (type == "waterflow") {
+                if (prefix == 3) mode = "waterflow";
               }
 
               // Check for prefix override
@@ -855,8 +878,8 @@ interval:
                 mode = id(station_prefix_overrides)[override_key];
               }
 
-              // Check if this is a continuous station (b_combo/b_fire with fire prefix)
-              bool is_continuous_fire = (type == "b_combo" || type == "b_fire") && prefix == 1;
+              // Check if this is a continuous station
+              bool is_continuous_fire = id(station_continuous).count(target_station_id) && id(station_continuous)[target_station_id];
 
               // Get status (continuous stations always show ALARM, not round-based)
               std::string status = "";
@@ -867,7 +890,9 @@ interval:
                 else if (rounds == 6) status = "ALARM+RESET";
                 else status = "ACTIVE";
               } else if (mode == "waterflow") {
-                if (rounds >= 7) status = "TAMPER";
+                // Check station_tamper flag for 7+ round detection
+                bool has_tamper = id(station_tamper).count(target_station_id) && id(station_tamper)[target_station_id];
+                if (has_tamper && rounds >= 7) status = "TAMPER";
                 else if (rounds == 5) status = "ALARM";
                 else if (rounds == 1) status = "RESET";
                 else if (rounds == 6) status = "ALARM+RESET";
@@ -903,7 +928,8 @@ interval:
                   new_state = (rounds == 1 || rounds == 6) ? STATE_CLEAR : STATE_FIRE;
                 }
               } else if (mode == "waterflow") {
-                if (rounds >= 7) new_state = STATE_TAMPER;
+                bool has_tamper = id(station_tamper).count(target_station_id) && id(station_tamper)[target_station_id];
+                if (has_tamper && rounds >= 7) new_state = STATE_TAMPER;
                 else if (rounds == 1 || rounds == 6) new_state = STATE_CLEAR;
                 else new_state = STATE_WATERFLOW;
               } else if (mode == "watchman") {
