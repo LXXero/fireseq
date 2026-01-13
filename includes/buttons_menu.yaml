@@ -1,27 +1,31 @@
-# ADC resistor ladder panel buttons (7 buttons, 1 GPIO)
+# Menu-based panel buttons (7 buttons via ADC resistor ladder)
 # Requires substitution: gpio_buttons_adc
+#
+# Button layout:
+#   Toggle     - activate/deactivate system
+#   Menu ↑↓    - switch display screens (Status, Effects, etc.)
+#   Select ↑↓  - scroll within current context (effects, history)
+#   Type ↑↓    - change effect type (fire/march/code/doorbell)
 #
 # Hardware setup: 10 x 1K resistors in series from 3.3V to GND
 # Buttons connect ADC pin to each tap point
-# Use external 10K pullup from gpio_buttons_adc to 3.3V - no press reads 3.3V
+# Use external 10K pullup from gpio_buttons_adc to 3.3V
 #
 # Wiring diagram:
 #   3.3V
 #    |
-#   [1K]--- Toggle       (2.97V) <- most important, highest voltage
-#   [1K]--- Fire Up      (2.64V)
-#   [1K]--- Fire Down    (2.31V)
-#   [1K]--- March Up     (1.98V)
-#   [1K]--- March Down   (1.65V)
-#   [1K]--- Code Up      (1.32V)
-#   [1K]--- Code Down    (0.99V)
+#   [1K]--- Toggle       (2.97V)
+#   [1K]--- Menu Up      (2.64V)
+#   [1K]--- Menu Down    (2.31V)
+#   [1K]--- Type Up      (1.98V)
+#   [1K]--- Type Down    (1.65V)
+#   [1K]--- Select Up    (1.32V)
+#   [1K]--- Select Down  (0.99V)
 #   [1K]--- (future)     (0.66V)
 #   [1K]--- (future)     (0.33V)
 #   [1K]--- (future)     (0.00V)
 #    |
 #   GND
-#
-# All button common wires connect to gpio_buttons_adc
 
 sensor:
   - platform: adc
@@ -52,20 +56,7 @@ binary_sensor:
       - switch.toggle: toggle
 
   - platform: template
-    name: "Fire Up"
-    lambda: |-
-      float v = id(button_ladder).state;
-      return (v >= 2.60 && v <= 2.84);
-    filters:
-      - delayed_on: 10ms
-    on_press:
-      - script.execute:
-          id: set_effect
-          mode: up
-          type: fire
-
-  - platform: template
-    name: "Fire Down"
+    name: "Menu Up"
     lambda: |-
       float v = id(button_ladder).state;
       return (v >= 2.35 && v <= 2.59);
@@ -73,25 +64,23 @@ binary_sensor:
       - delayed_on: 10ms
     on_press:
       - script.execute:
-          id: set_effect
-          mode: down
-          type: fire
+          id: menu_navigate
+          direction: up
 
   - platform: template
-    name: "March Up"
+    name: "Menu Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 2.05 && v <= 2.34);
+      return (v >= 2.60 && v <= 2.84);
     filters:
       - delayed_on: 10ms
     on_press:
       - script.execute:
-          id: set_effect
-          mode: up
-          type: march
+          id: menu_navigate
+          direction: down
 
   - platform: template
-    name: "March Down"
+    name: "Type Up"
     lambda: |-
       float v = id(button_ladder).state;
       return (v >= 1.89 && v <= 2.10);
@@ -99,25 +88,23 @@ binary_sensor:
       - delayed_on: 10ms
     on_press:
       - script.execute:
-          id: set_effect
-          mode: down
-          type: march
+          id: type_button
+          direction: up
 
   - platform: template
-    name: "Code Up"
+    name: "Type Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.60 && v <= 1.88);
+      return (v >= 2.05 && v <= 2.34);
     filters:
       - delayed_on: 10ms
     on_press:
       - script.execute:
-          id: set_effect
-          mode: up
-          type: code
+          id: type_button
+          direction: down
 
   - platform: template
-    name: "Code Down"
+    name: "Select Up"
     lambda: |-
       float v = id(button_ladder).state;
       return (v >= 1.30 && v <= 1.59);
@@ -125,6 +112,17 @@ binary_sensor:
       - delayed_on: 10ms
     on_press:
       - script.execute:
-          id: set_effect
-          mode: down
-          type: code
+          id: select_button
+          direction: up
+
+  - platform: template
+    name: "Select Down"
+    lambda: |-
+      float v = id(button_ladder).state;
+      return (v >= 1.60 && v <= 1.88);
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - script.execute:
+          id: select_button
+          direction: down

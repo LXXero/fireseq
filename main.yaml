@@ -274,6 +274,72 @@ globals:
    restore_value: no
    initial_value: 'std::vector<std::string>{}'
 
+ # Display navigation
+ - id: display_screen
+   type: short
+   restore_value: no
+   initial_value: '0'
+
+ - id: display_screens
+   type: std::vector<std::string>
+   restore_value: no
+   initial_value: 'std::vector<std::string>{"Status", "Effects"}'
+
+ # Howe display scroll (used by buttons, defined here for availability)
+ - id: howe_display_scroll
+   type: int
+   restore_value: no
+   initial_value: '0'
+
+ # Howe display sub-mode: 0=Live (last code), 1=List (station list)
+ - id: howe_display_mode
+   type: int
+   restore_value: no
+   initial_value: '0'
+
+ # Last received Howe code info (for Live display)
+ - id: howe_last_code
+   type: std::string
+   restore_value: no
+   initial_value: '""'
+
+ - id: howe_last_station_name
+   type: std::string
+   restore_value: no
+   initial_value: '""'
+
+ - id: howe_last_status
+   type: std::string
+   restore_value: no
+   initial_value: '""'
+
+ # Extension screen data (populated by howe_decoder, etc.)
+ - id: display_ext_header
+   type: std::string
+   restore_value: no
+   initial_value: '""'
+
+ - id: display_ext_header_right
+   type: std::string
+   restore_value: no
+   initial_value: '""'
+
+ - id: display_ext_inverted
+   type: bool
+   restore_value: no
+   initial_value: 'false'
+
+ - id: display_ext_lines
+   type: std::vector<std::string>
+   restore_value: no
+   initial_value: 'std::vector<std::string>{}'
+
+ # Right-aligned text for each line (rendered at fixed pixel position)
+ - id: display_ext_lines_right
+   type: std::vector<std::string>
+   restore_value: no
+   initial_value: 'std::vector<std::string>{}'
+
 script:
   - id: set_effect
     parameters:
@@ -364,6 +430,98 @@ script:
       - globals.set:
           id: presignal_active
           value: 'true'
+
+  # Navigate display screens (menu up/down)
+  - id: menu_navigate
+    parameters:
+      direction: std::string
+    then:
+      - lambda: |-
+          int screen_count = id(display_screens).size();
+          if (screen_count == 0) return;
+
+          int current = id(display_screen);
+          if (direction == "up") {
+            current = (current + 1) % screen_count;
+          } else if (direction == "down") {
+            current = (current - 1 + screen_count) % screen_count;
+          }
+          id(display_screen) = current;
+          ESP_LOGD("menu", "Screen: %s (%d/%d)",
+                   id(display_screens)[current].c_str(), current + 1, screen_count);
+
+  # Cycle effect type (fire/march/code/doorbell) - skips empty types
+  - id: type_cycle
+    parameters:
+      direction: std::string
+    then:
+      - lambda: |-
+          std::vector<std::string>* effect_lists[] = {
+            &id(fire_effects),
+            &id(march_effects),
+            &id(code_effects),
+            &id(doorbell_effects)
+          };
+          int type_count = 4;
+          int current = id(effect_type);
+          int step = (direction == "up") ? 1 : -1;
+
+          // Find next non-empty type
+          for (int i = 0; i < type_count; i++) {
+            current = (current + step + type_count) % type_count;
+            if (!effect_lists[current]->empty()) {
+              break;
+            }
+          }
+
+          id(effect_type) = current;
+      - script.execute:
+          id: set_effect
+          type: restore
+          mode: set
+
+  # Type button handlers (shared by all button input methods)
+  - id: type_button
+    parameters:
+      direction: std::string
+    then:
+      - lambda: |-
+          // Screen 2 (Howe): cycle through Live/Active/All modes
+          if (id(display_screen) == 2 && id(display_screens).size() > 2) {
+            if (direction == "up") {
+              id(howe_display_mode) = (id(howe_display_mode) + 1) % 3;
+            } else {
+              id(howe_display_mode) = (id(howe_display_mode) + 2) % 3;
+            }
+            id(howe_display_scroll) = 0;  // Reset scroll on mode change
+          } else {
+            // Other screens: cycle effect type
+            auto call = id(type_cycle);
+            call->execute(direction);
+          }
+
+  # Select button handlers (shared by all button input methods)
+  - id: select_button
+    parameters:
+      direction: std::string
+    then:
+      - lambda: |-
+          // Screen 2 (Howe) + Active/All modes: scroll station list by page
+          if (id(display_screen) == 2 && id(display_screens).size() > 2 && id(howe_display_mode) >= 1) {
+            if (direction == "up") {
+              id(howe_display_scroll) += 3;
+            } else {
+              if (id(howe_display_scroll) >= 3) {
+                id(howe_display_scroll) -= 3;
+              } else {
+                id(howe_display_scroll) = 0;
+              }
+            }
+          } else if (id(display_screen) != 2) {
+            // Other screens: scroll effects
+            auto call = id(set_effect);
+            call->execute("restore", direction);
+          }
 
 binary_sensor:
   - name: In Alarm

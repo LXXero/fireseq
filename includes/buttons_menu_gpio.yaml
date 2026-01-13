@@ -1,6 +1,12 @@
-# GPIO-based panel buttons (7 buttons, 7 GPIOs)
-# Requires substitutions: gpio_toggle, gpio_fire_up, gpio_fire_down,
-#   gpio_march_up, gpio_march_down, gpio_code_up, gpio_code_down
+# Menu-based panel buttons (7 buttons via separate GPIOs)
+# Requires substitutions: gpio_toggle, gpio_menu_up, gpio_menu_down,
+#   gpio_type_up, gpio_type_down, gpio_select_up, gpio_select_down
+#
+# Button layout:
+#   Toggle     - activate/deactivate system
+#   Menu ↑↓    - switch display screens (Status, Effects, Howe)
+#   Type ↑↓    - change effect type or Howe display mode
+#   Select ↑↓  - scroll within current context
 
 binary_sensor:
   - name: Toggle
@@ -15,10 +21,10 @@ binary_sensor:
     on_click:
       - switch.toggle: toggle
 
-  - name: Fire Up
+  - name: "Menu Up"
     platform: gpio
     pin:
-      number: ${gpio_fire_up}
+      number: ${gpio_menu_up}
       mode:
         input: true
         pulldown: true
@@ -26,14 +32,13 @@ binary_sensor:
       - delayed_on: 10ms
     on_click:
       - script.execute:
-          id: set_effect
-          mode: up
-          type: fire
+          id: menu_navigate
+          direction: up
 
-  - name: Fire Down
+  - name: "Menu Down"
     platform: gpio
     pin:
-      number: ${gpio_fire_down}
+      number: ${gpio_menu_down}
       mode:
         input: true
         pulldown: true
@@ -41,14 +46,13 @@ binary_sensor:
       - delayed_on: 10ms
     on_click:
       - script.execute:
-          id: set_effect
-          mode: down
-          type: fire
+          id: menu_navigate
+          direction: down
 
-  - name: March Up
+  - name: "Type Up"
     platform: gpio
     pin:
-      number: ${gpio_march_up}
+      number: ${gpio_type_up}
       mode:
         input: true
         pulldown: true
@@ -56,14 +60,13 @@ binary_sensor:
       - delayed_on: 10ms
     on_click:
       - script.execute:
-          id: set_effect
-          mode: up
-          type: march
+          id: type_button
+          direction: up
 
-  - name: March Down
+  - name: "Type Down"
     platform: gpio
     pin:
-      number: ${gpio_march_down}
+      number: ${gpio_type_down}
       mode:
         input: true
         pulldown: true
@@ -71,14 +74,13 @@ binary_sensor:
       - delayed_on: 10ms
     on_click:
       - script.execute:
-          id: set_effect
-          mode: down
-          type: march
+          id: type_button
+          direction: down
 
-  - name: Code Up
+  - name: "Select Up"
     platform: gpio
     pin:
-      number: ${gpio_code_up}
+      number: ${gpio_select_up}
       mode:
         input: true
         pulldown: true
@@ -86,14 +88,13 @@ binary_sensor:
       - delayed_on: 10ms
     on_click:
       - script.execute:
-          id: set_effect
-          mode: up
-          type: code
+          id: select_button
+          direction: up
 
-  - name: Code Down
+  - name: "Select Down"
     platform: gpio
     pin:
-      number: ${gpio_code_down}
+      number: ${gpio_select_down}
       mode:
         input: true
         pulldown: true
@@ -101,6 +102,5 @@ binary_sensor:
       - delayed_on: 10ms
     on_click:
       - script.execute:
-          id: set_effect
-          mode: down
-          type: code
+          id: select_button
+          direction: down

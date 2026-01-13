@@ -318,6 +318,13 @@ binary_sensor:
                        code.c_str(), round, prefix, station_id.c_str());
             }
 
+            // Update last code info for display
+            id(howe_last_code) = code;
+            id(howe_last_station_name) = name;
+            char status_line[48];
+            snprintf(status_line, sizeof(status_line), "%s - Round %d", status.c_str(), round);
+            id(howe_last_status) = status_line;
+
             // State constants
             const int STATE_UNKNOWN = 0;
             const int STATE_CLEAR = 1;
@@ -462,6 +469,12 @@ binary_sensor:
               id(interim_summarized).clear();  // Reset interim summary tracking
               id(pending_interim_summary).clear();  // Clear pending interim queue
               ESP_LOGI("howe", "=== Transmission started ===");
+              // Auto-switch to Howe display screen in Live mode
+              if (id(display_screens).size() > 2) {
+                id(howe_display_mode) = 0;    // Live mode
+                id(howe_display_scroll) = 0;  // Reset scroll position
+                id(display_screen) = 2;
+              }
             } else {
               // Oscillator running but no signal yet - ignore warmup pulses
               return;
@@ -1023,6 +1036,13 @@ interval:
                 ESP_LOGI("howe", "[%s] round %d (prefix=%d station=%s)",
                          code.c_str(), round, prefix_num, station_id.c_str());
               }
+
+              // Update display with final round info
+              id(howe_last_code) = code;
+              id(howe_last_station_name) = name;
+              char status_line[48];
+              snprintf(status_line, sizeof(status_line), "Final - Round %d", round);
+              id(howe_last_status) = status_line;
             }
 
             // Log transmission summary
@@ -1039,6 +1059,7 @@ interval:
             };
 
             // Restore station states from persistent string on first transmission
+            // Restored alarm states are added to triggered sets so they don't re-trigger panel
             static bool states_restored = false;
             if (!states_restored && !id(station_states_str).empty()) {
               std::string data = id(station_states_str);
@@ -1050,9 +1071,16 @@ interval:
                   int state = record.back() - '0';
                   std::string station_compact = record.substr(0, record.length() - 1);
                   std::string station_id = add_dashes(station_compact);
-                  if (state >= 0 && state <= 7) {  // 7 = TAMPER
+                  if (state >= 0 && state <= 7) {
                     id(station_states)[station_id] = state;
                     ESP_LOGI("howe", "Restored state: %s = %s", station_id.c_str(), state_name(state).c_str());
+                    // Mark alarm states as already triggered so panel doesn't re-fire
+                    // PRESIGNAL=2, GA=3, FIRE=4
+                    if (state == 2) {
+                      id(presignal_pulsed_stations).insert(station_id);
+                    } else if (state == 3 || state == 4) {
+                      id(alarm_triggered_stations).insert(station_id);
+                    }
                   }
                 }
                 if (comma == std::string::npos) break;

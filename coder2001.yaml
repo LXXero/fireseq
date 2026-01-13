@@ -20,7 +20,6 @@ substitutions:
   gpio_howe_oscillator: 'GPIO14'
   gpio_howe_signal: 'GPIO13'
   # Inputs
-  gpio_doorbell: 'GPIO35'
   gpio_zone: 'GPIO33'
   gpio_zone_invert: 'true'
   gpio_presignal: 'GPIO34'
@@ -35,5 +34,5 @@ packages:
   main: !include main.yaml
   fire: !include includes/effects_fire.yaml
   howe: !include includes/howe_panel.yaml
-  buttons: !include includes/buttons_adc.yaml
+  buttons: !include includes/buttons_menu.yaml
   display: !include includes/display_oled.yaml

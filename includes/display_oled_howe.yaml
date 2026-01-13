@@ -1,0 +1,186 @@
+# Howe display extension
+# Adds Howe screen to the OLED display with Live, Active, and All modes
+# Included by howe_panel.yaml - do not include directly
+#
+# Modes (toggle with Type buttons):
+#   0 = Live: Shows last received code (auto-selected during transmission)
+#   1 = Active: Scrollable list of stations with active alarms (not UNKNOWN/CLEAR)
+#   2 = All: Scrollable list of ALL stations with their state
+
+esphome:
+  on_boot:
+    - priority: 100
+      then:
+        - lambda: |-
+            // Add Howe screen to display
+            id(display_screens).push_back("Howe");
+
+interval:
+  # Update Howe display data when on Howe screen
+  - interval: 200ms
+    then:
+      - lambda: |-
+          // Only update if on Howe screen (screen 2)
+          if (id(display_screen) != 2) return;
+
+          int mode = id(howe_display_mode);
+
+          // ===== MODE 0: LIVE - Last received code =====
+          if (mode == 0) {
+            id(display_ext_header) = "Howe";
+            id(display_ext_header_right) = id(howe_in_transmission) ? "LIVE" : "Idle";
+            id(display_ext_inverted) = id(howe_in_transmission);
+
+            id(display_ext_lines).clear();
+            id(display_ext_lines_right).clear();
+
+            if (id(howe_last_code).empty()) {
+              id(display_ext_lines).push_back("Waiting for signal...");
+            } else {
+              // Parse prefix and station_id from code
+              std::string code = id(howe_last_code);
+              std::string prefix_str = "";
+              std::string station_id = "";
+              size_t first_dash = code.find('-');
+              if (first_dash != std::string::npos) {
+                prefix_str = code.substr(0, first_dash);
+                station_id = code.substr(first_dash + 1);
+              } else {
+                prefix_str = code;
+              }
+
+              // Line 1: Code with highlighted prefix "[2] 1-4-5" + state on right
+              char code_line[32];
+              snprintf(code_line, sizeof(code_line), "[%s]-%s", prefix_str.c_str(), station_id.c_str());
+              id(display_ext_lines).push_back(code_line);
+
+              const char* state_codes[] = {"??", "OK", "PS", "GA", "FA", "WF", "WM", "TP"};
+              int state = 0;
+              if (!station_id.empty() && id(station_states).count(station_id)) {
+                state = id(station_states)[station_id];
+              }
+              id(display_ext_lines_right).push_back((state >= 0 && state <= 7) ? state_codes[state] : "??");
+
+              // Line 2: Station name
+              std::string name = id(howe_last_station_name);
+              if (name.empty()) name = "(Unknown station)";
+              if (name.length() > 20) name = name.substr(0, 19) + "~";
+              id(display_ext_lines).push_back(name);
+
+              // Line 3: Status
+              id(display_ext_lines).push_back(id(howe_last_status));
+            }
+          }
+
+          // ===== MODE 1: ACTIVE - Stations with active alarms =====
+          else if (mode == 1) {
+            id(display_ext_header) = "Howe";
+            id(display_ext_header_right) = "Active";
+            id(display_ext_inverted) = false;
+
+            id(display_ext_lines).clear();
+            id(display_ext_lines_right).clear();
+
+            // Collect active stations (not UNKNOWN or CLEAR)
+            std::vector<std::pair<std::string, int>> active_stations;
+            for (const auto& kv : id(station_states)) {
+              if (kv.second != 0 && kv.second != 1) {
+                active_stations.push_back({kv.first, kv.second});
+              }
+            }
+
+            if (active_stations.empty()) {
+              id(display_ext_lines).push_back("No active alarms");
+              id(display_ext_lines_right).push_back("");
+            } else {
+              // 2-char state codes
+              const char* state_codes[] = {"??", "OK", "PS", "GA", "FA", "WF", "WM", "TP"};
+
+              int scroll = id(howe_display_scroll);
+              int max_scroll = std::max(0, (int)active_stations.size() - 3);
+              if (scroll > max_scroll) {
+                scroll = max_scroll;
+                id(howe_display_scroll) = scroll;
+              }
+
+              for (int i = 0; i < 3 && (scroll + i) < (int)active_stations.size(); i++) {
+                auto& station = active_stations[scroll + i];
+                std::string station_id = station.first;
+                int state = station.second;
+
+                std::string name = station_id;
+                if (id(station_names).count(station_id)) {
+                  name = id(station_names)[station_id];
+                }
+                if (name.length() > 15) name = name.substr(0, 14) + "~";
+
+                const char* state_str = (state >= 0 && state <= 7) ? state_codes[state] : "??";
+
+                id(display_ext_lines).push_back(name);
+                id(display_ext_lines_right).push_back(state_str);
+              }
+
+              if (active_stations.size() > 3) {
+                char count[16];
+                snprintf(count, sizeof(count), "(%d)", (int)active_stations.size());
+                id(display_ext_header_right) = count;
+              }
+            }
+          }
+
+          // ===== MODE 2: ALL - All stations with state =====
+          else if (mode == 2) {
+            id(display_ext_header) = "Howe";
+            id(display_ext_header_right) = "All";
+            id(display_ext_inverted) = false;
+
+            id(display_ext_lines).clear();
+            id(display_ext_lines_right).clear();
+
+            // Collect ALL stations from station_names (the database)
+            std::vector<std::string> all_stations;
+            for (const auto& kv : id(station_names)) {
+              all_stations.push_back(kv.first);
+            }
+
+            if (all_stations.empty()) {
+              id(display_ext_lines).push_back("No stations defined");
+              id(display_ext_lines_right).push_back("");
+            } else {
+              // 2-char state codes
+              const char* state_codes[] = {"??", "OK", "PS", "GA", "FA", "WF", "WM", "TP"};
+
+              int scroll = id(howe_display_scroll);
+              int max_scroll = std::max(0, (int)all_stations.size() - 3);
+              if (scroll > max_scroll) {
+                scroll = max_scroll;
+                id(howe_display_scroll) = scroll;
+              }
+
+              for (int i = 0; i < 3 && (scroll + i) < (int)all_stations.size(); i++) {
+                std::string station_id = all_stations[scroll + i];
+
+                // Get state (default to UNKNOWN if not in station_states)
+                int state = 0;
+                if (id(station_states).count(station_id)) {
+                  state = id(station_states)[station_id];
+                }
+
+                std::string name = id(station_names)[station_id];
+                if (name.length() > 15) name = name.substr(0, 14) + "~";
+
+                const char* state_str = (state >= 0 && state <= 7) ? state_codes[state] : "??";
+
+                id(display_ext_lines).push_back(name);
+                id(display_ext_lines_right).push_back(state_str);
+              }
+
+              if (all_stations.size() > 3) {
+                int first = scroll + 1;
+                int last = std::min(scroll + 3, (int)all_stations.size());
+                char count[24];
+                snprintf(count, sizeof(count), "%d-%d/%d", first, last, (int)all_stations.size());
+                id(display_ext_header_right) = count;
+              }
+            }
+          }

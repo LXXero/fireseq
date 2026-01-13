@@ -14,6 +14,7 @@
 
 packages:
   decoder: !include howe_decoder.yaml
+  howe_display: !include display_oled_howe.yaml
 
 globals:
   # Track which stations have already triggered presignal pulse

@@ -15,7 +15,6 @@ substitutions:
   gpio_shunt: 'GPIO17'
   gpio_trigger: 'GPIO23'
   # Inputs
-  gpio_doorbell: 'GPIO35'
   gpio_zone: 'GPIO33'
   gpio_zone_invert: 'false'
   gpio_presignal: 'GPIO34'
@@ -33,7 +32,7 @@ substitutions:
 
 packages:
   main: !include main.yaml
-  buttons: !include includes/buttons_adc.yaml
+  buttons: !include includes/buttons_menu.yaml
   display: !include includes/display_oled.yaml
   diagnostics: !include includes/diagnostics.yaml
   #pulse_counter: !include includes/pulse_counter.yaml

@@ -1,5 +1,10 @@
 # OLED Display (SSD1306 128x64)
-# Optional package - include if your device has an I2C OLED display
+# Multi-screen display with menu navigation
+#
+# Screens:
+#   0: Status  - current effect and system state
+#   1: Effects - scrollable effect list
+#   (Howe decoder extends with additional screens)
 #
 # Required substitutions:
 #   gpio_scl: I2C clock pin (e.g., 'GPIO25')
@@ -15,21 +20,130 @@ i2c:
 
 font:
   - file: 'FreeSans.ttf'
-    id: font1
+    id: font_main
     size: 14
+  - file: 'FreeSans.ttf'
+    id: font_small
+    size: 11
+  - file: 'VeraMono.ttf'
+    id: font_mono
+    size: 12
 
 display:
   - platform: ssd1306_i2c
+    id: oled_display
     model: "SSD1306 128x64"
     address: 0x3C
     lambda: |-
-      // Header - invert when shunt is on (alarm active)
-      if (id(shunt).state) {
-        it.filled_rectangle(0, 0, 128, 14, COLOR_ON);
-        it.print(0, 0, id(font1), COLOR_OFF, "Fire Sequencer!");
-      } else {
-        it.print(0, 0, id(font1), "Fire Sequencer!");
+      const char* type_labels[] = {"Fire", "March", "Code", "Doorbell"};
+      int current_type = id(effect_type);
+      int current_effect = id(effect);
+      int current_screen = id(display_screen);
+
+      // Get current effect list
+      std::vector<std::string>* effect_lists[] = {
+        &id(fire_effects),
+        &id(march_effects),
+        &id(code_effects),
+        &id(doorbell_effects)
+      };
+      std::vector<std::string>& effects = *effect_lists[current_type];
+
+      // Type indicator character
+      const char type_chars[] = {'F', 'M', 'C', 'D'};
+      char type_char = type_chars[current_type];
+
+      // ===== SCREEN 0: STATUS =====
+      if (current_screen == 0) {
+        // Header bar - invert when shunt active
+        if (id(shunt).state) {
+          it.filled_rectangle(0, 0, 128, 15, COLOR_ON);
+          it.printf(2, 0, id(font_main), COLOR_OFF, "FireSeq");
+          it.printf(126, 0, id(font_main), COLOR_OFF, TextAlign::TOP_RIGHT, "%s", type_labels[current_type]);
+        } else {
+          it.printf(2, 0, id(font_main), "FireSeq");
+          it.printf(126, 0, id(font_main), TextAlign::TOP_RIGHT, "%s", type_labels[current_type]);
+        }
+
+        // System state
+        bool code_running = id(code).current_values.is_on() ||
+                            id(code).get_effect_name() != "None";
+        const char* state = "READY";
+        if (id(presignal_active) && id(shunt).state) {
+          state = "PRESIGNAL";
+        } else if (id(shunt).state) {
+          state = "ALARM";
+        } else if (code_running) {
+          state = "RUNNING";
+        }
+        it.printf(2, 17, id(font_main), "%s", state);
+
+        // Current effect name
+        std::string effect_name = "---";
+        if (current_effect >= 0 && current_effect < (int)effects.size()) {
+          effect_name = effects[current_effect];
+        }
+        it.printf(2, 34, id(font_main), "%s", effect_name.c_str());
+
+        // Effect position
+        if (!effects.empty()) {
+          it.printf(2, 50, id(font_main), "%d of %d", current_effect + 1, effects.size());
+        }
       }
-      it.printf(0, 15, id(font1), "Shunt: %s", id(shunt).state ? "On" : "Off");
-      it.printf(0, 30, id(font1), "Code: %s",  id(code).get_effect_name() != "None" ? "On":  id(code).current_values.is_on() ? "On" : "Off" );
-      it.printf(0, 45, id(font1), "%s", id(code).get_effect_name().c_str());
+
+      // ===== SCREEN 1: EFFECTS =====
+      else if (current_screen == 1) {
+        // Header with type name
+        it.filled_rectangle(0, 0, 128, 15, COLOR_ON);
+        it.printf(2, 0, id(font_main), COLOR_OFF, "%s", type_labels[current_type]);
+
+        // Show 3 effects centered around current selection
+        int list_size = effects.size();
+        if (list_size == 0) {
+          it.printf(2, 25, id(font_main), "(no effects)");
+        } else {
+          // Calculate which items to show (current in middle when possible)
+          int start_idx = current_effect - 1;
+          if (start_idx < 0) start_idx = 0;
+          if (start_idx > list_size - 3 && list_size >= 3) start_idx = list_size - 3;
+
+          for (int i = 0; i < 3 && (start_idx + i) < list_size; i++) {
+            int idx = start_idx + i;
+            int y = 17 + (i * 16);
+
+            // Highlight current selection
+            if (idx == current_effect) {
+              it.filled_rectangle(0, y - 1, 128, 15, COLOR_ON);
+              it.printf(2, y, id(font_main), COLOR_OFF, "> %s", effects[idx].c_str());
+            } else {
+              it.printf(8, y, id(font_main), "%s", effects[idx].c_str());
+            }
+          }
+        }
+      }
+
+      // ===== EXTENDED SCREENS (added by howe_decoder, etc.) =====
+      // Screen 2+: renders from display_ext_* globals
+      else if (current_screen >= 2) {
+        // Header bar
+        if (id(display_ext_inverted)) {
+          it.filled_rectangle(0, 0, 128, 15, COLOR_ON);
+          it.printf(2, 0, id(font_main), COLOR_OFF, "%s", id(display_ext_header).c_str());
+          it.printf(126, 0, id(font_main), COLOR_OFF, TextAlign::TOP_RIGHT, "%s", id(display_ext_header_right).c_str());
+        } else {
+          it.printf(2, 0, id(font_main), "%s", id(display_ext_header).c_str());
+          it.printf(126, 0, id(font_main), TextAlign::TOP_RIGHT, "%s", id(display_ext_header_right).c_str());
+        }
+
+        // Render lines from display_ext_lines (left) and display_ext_lines_right (right-aligned)
+        // Uses monospace font for consistent column alignment
+        auto& lines = id(display_ext_lines);
+        auto& lines_right = id(display_ext_lines_right);
+        for (int i = 0; i < (int)lines.size() && i < 3; i++) {
+          int y = 18 + (i * 15);
+          it.printf(2, y, id(font_mono), "%s", lines[i].c_str());
+          if (i < (int)lines_right.size() && !lines_right[i].empty()) {
+            it.printf(126, y, id(font_mono), TextAlign::TOP_RIGHT, "%s", lines_right[i].c_str());
+          }
+        }
+      }

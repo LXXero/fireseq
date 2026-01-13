@@ -1,9 +1,9 @@
 # Example: ESP32 with individual GPIO buttons (7 GPIOs for 7 buttons)
 #
 # Hardware setup:
-#   - Each button connects a GPIO to GND through a momentary switch
-#   - Internal pullups are used
-#   - See buttons_gpio.yaml for button mapping
+#   - Each button connects a GPIO to 3.3V through a momentary switch
+#   - Internal pulldowns are used
+#   - See buttons_menu_gpio.yaml for button mapping
 #
 # This uses more GPIOs than the ADC ladder approach but is simpler to wire.
 
@@ -17,7 +17,6 @@ substitutions:
   gpio_shunt: 'GPIO17'
   gpio_trigger: 'GPIO32'
   # Inputs
-  gpio_doorbell: 'GPIO35'
   gpio_zone: 'GPIO33'
   gpio_zone_invert: 'false'
   gpio_presignal: 'GPIO34'
@@ -25,20 +24,20 @@ substitutions:
   # I2C (for OLED)
   gpio_scl: 'GPIO25'
   gpio_sda: 'GPIO27'
-  # Panel buttons (directly wired to GPIO)
+  # Panel buttons (menu layout)
   gpio_toggle: 'GPIO19'
-  gpio_fire_up: 'GPIO18'
-  gpio_fire_down: 'GPIO21'
-  gpio_march_up: 'GPIO26'
-  gpio_march_down: 'GPIO4'
-  gpio_code_up: 'GPIO22'
-  gpio_code_down: 'GPIO14'
+  gpio_menu_up: 'GPIO21'
+  gpio_menu_down: 'GPIO18'
+  gpio_type_up: 'GPIO4'
+  gpio_type_down: 'GPIO26'
+  gpio_select_up: 'GPIO14'
+  gpio_select_down: 'GPIO22'
   # Pulse counter (for reading incoming codes)
   #gpio_code_reader: 'GPIO36'
 
 packages:
   main: !include main.yaml
-  buttons: !include includes/buttons_gpio.yaml
+  buttons: !include includes/buttons_menu_gpio.yaml
   display: !include includes/display_oled.yaml
   diagnostics: !include includes/diagnostics.yaml
   #pulse_counter: !include includes/pulse_counter.yaml

@@ -3,10 +3,10 @@
 # Hardware setup:
 #   - 10 x 1K resistors in series from 3.3V to GND
 #   - Each button connects gpio_buttons_adc to a tap on the ladder
-#   - See buttons_adc.yaml for wiring diagram and voltage levels
+#   - See buttons_menu.yaml for wiring diagram and voltage levels
 #
 # Button order on ladder (top to bottom):
-#   Toggle, Fire Up, Fire Down, March Up, March Down, Code Up, Code Down
+#   Toggle, Menu Up, Menu Down, Type Up, Type Down, Select Up, Select Down
 #
 # GPIO32 or GPIO33 recommended (have internal pullup + ADC)
 
@@ -20,7 +20,6 @@ substitutions:
   gpio_shunt: 'GPIO17'
   gpio_trigger: 'GPIO23'
   # Inputs
-  gpio_doorbell: 'GPIO35'
   gpio_zone: 'GPIO33'
   gpio_zone_invert: 'false'
   gpio_presignal: 'GPIO34'
@@ -35,7 +34,7 @@ substitutions:
 
 packages:
   main: !include main.yaml
-  buttons: !include includes/buttons_adc.yaml
+  buttons: !include includes/buttons_menu.yaml
   display: !include includes/display_oled.yaml
   diagnostics: !include includes/diagnostics.yaml
   #pulse_counter: !include includes/pulse_counter.yaml
