@@ -59,7 +59,7 @@ binary_sensor:
     name: "Menu Up"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 2.35 && v <= 2.59);
+      return (v >= 2.60 && v <= 2.84);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -71,7 +71,7 @@ binary_sensor:
     name: "Menu Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 2.60 && v <= 2.84);
+      return (v >= 2.35 && v <= 2.59);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -83,7 +83,7 @@ binary_sensor:
     name: "Type Up"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.89 && v <= 2.10);
+      return (v >= 2.05 && v <= 2.34);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -95,7 +95,7 @@ binary_sensor:
     name: "Type Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 2.05 && v <= 2.34);
+      return (v >= 1.89 && v <= 2.10);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -107,7 +107,7 @@ binary_sensor:
     name: "Select Up"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.30 && v <= 1.59);
+      return (v >= 1.60 && v <= 1.88);
     filters:
       - delayed_on: 10ms
     on_press:
@@ -119,7 +119,7 @@ binary_sensor:
     name: "Select Down"
     lambda: |-
       float v = id(button_ladder).state;
-      return (v >= 1.60 && v <= 1.88);
+      return (v >= 1.30 && v <= 1.59);
     filters:
       - delayed_on: 10ms
     on_press:

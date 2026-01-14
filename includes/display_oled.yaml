@@ -93,9 +93,19 @@ display:
 
       // ===== SCREEN 1: EFFECTS =====
       else if (current_screen == 1) {
-        // Header with type name
-        it.filled_rectangle(0, 0, 128, 15, COLOR_ON);
-        it.printf(2, 0, id(font_main), COLOR_OFF, "%s", type_labels[current_type]);
+        // Header with type name and position - invert when shunt active
+        if (id(shunt).state) {
+          it.filled_rectangle(0, 0, 128, 15, COLOR_ON);
+          it.printf(2, 0, id(font_main), COLOR_OFF, "%s", type_labels[current_type]);
+          if (!effects.empty()) {
+            it.printf(126, 0, id(font_main), COLOR_OFF, TextAlign::TOP_RIGHT, "%d/%d", current_effect + 1, effects.size());
+          }
+        } else {
+          it.printf(2, 0, id(font_main), "%s", type_labels[current_type]);
+          if (!effects.empty()) {
+            it.printf(126, 0, id(font_main), TextAlign::TOP_RIGHT, "%d/%d", current_effect + 1, effects.size());
+          }
+        }
 
         // Show 3 effects centered around current selection
         int list_size = effects.size();

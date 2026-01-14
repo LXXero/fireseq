@@ -20,12 +20,12 @@ substitutions:
   gpio_sda: 'GPIO27'
   # Panel buttons (menu layout)
   gpio_toggle: 'GPIO19'
-  gpio_menu_up: 'GPIO21'
-  gpio_menu_down: 'GPIO18'
-  gpio_type_up: 'GPIO4'
-  gpio_type_down: 'GPIO26'
-  gpio_select_up: 'GPIO14'
-  gpio_select_down: 'GPIO22'
+  gpio_menu_up: 'GPIO18'
+  gpio_menu_down: 'GPIO21'
+  gpio_type_up: 'GPIO26'
+  gpio_type_down: 'GPIO4'
+  gpio_select_up: 'GPIO22'
+  gpio_select_down: 'GPIO14'
 
 packages:
   main: !include main.yaml

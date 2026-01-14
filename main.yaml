@@ -389,13 +389,13 @@ script:
             ? find(effect_map.list.begin(), effect_map.list.end(), effect_map.list[id(effect)]) == effect_map.list.end()
             : true;
 
-          if (mode == "down" && (not_found || id(effect) - 1 < 0)) {
+          if (mode == "up" && (not_found || id(effect) - 1 < 0)) {
             next_id = effect_map.list.size() - 1;
-          } else if (mode == "down") {
-            next_id = id(effect) - 1;
-          } else if (mode == "up" && (not_found || id(effect) + 1 >= (int)effect_map.list.size())) {
-            next_id = 0;
           } else if (mode == "up") {
+            next_id = id(effect) - 1;
+          } else if (mode == "down" && (not_found || id(effect) + 1 >= (int)effect_map.list.size())) {
+            next_id = 0;
+          } else if (mode == "down") {
             next_id = id(effect) + 1;
           } else {
             next_id = id(effect);
@@ -442,9 +442,9 @@ script:
 
           int current = id(display_screen);
           if (direction == "up") {
-            current = (current + 1) % screen_count;
-          } else if (direction == "down") {
             current = (current - 1 + screen_count) % screen_count;
+          } else if (direction == "down") {
+            current = (current + 1) % screen_count;
           }
           id(display_screen) = current;
           ESP_LOGD("menu", "Screen: %s (%d/%d)",
@@ -464,7 +464,7 @@ script:
           };
           int type_count = 4;
           int current = id(effect_type);
-          int step = (direction == "up") ? 1 : -1;
+          int step = (direction == "up") ? -1 : 1;
 
           // Find next non-empty type
           for (int i = 0; i < type_count; i++) {
@@ -473,7 +473,6 @@ script:
               break;
             }
           }
-
           id(effect_type) = current;
       - script.execute:
           id: set_effect
@@ -489,9 +488,9 @@ script:
           // Screen 2 (Howe): cycle through Live/Active/All modes
           if (id(display_screen) == 2 && id(display_screens).size() > 2) {
             if (direction == "up") {
-              id(howe_display_mode) = (id(howe_display_mode) + 1) % 3;
-            } else {
               id(howe_display_mode) = (id(howe_display_mode) + 2) % 3;
+            } else {
+              id(howe_display_mode) = (id(howe_display_mode) + 1) % 3;
             }
             id(howe_display_scroll) = 0;  // Reset scroll on mode change
           } else {
@@ -509,13 +508,13 @@ script:
           // Screen 2 (Howe) + Active/All modes: scroll station list by page
           if (id(display_screen) == 2 && id(display_screens).size() > 2 && id(howe_display_mode) >= 1) {
             if (direction == "up") {
-              id(howe_display_scroll) += 3;
-            } else {
               if (id(howe_display_scroll) >= 3) {
                 id(howe_display_scroll) -= 3;
               } else {
                 id(howe_display_scroll) = 0;
               }
+            } else {
+              id(howe_display_scroll) += 3;
             }
           } else if (id(display_screen) != 2) {
             // Other screens: scroll effects
