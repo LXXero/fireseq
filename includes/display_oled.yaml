@@ -35,7 +35,7 @@ display:
     model: "SSD1306 128x64"
     address: 0x3C
     lambda: |-
-      const char* type_labels[] = {"Fire", "March", "Code", "Doorbell"};
+      const char* type_labels[] = {"Fire", "March", "Code", "Firecom", "Doorbell"};
       int current_type = id(effect_type);
       int current_effect = id(effect);
       int current_screen = id(display_screen);
@@ -45,13 +45,10 @@ display:
         &id(fire_effects),
         &id(march_effects),
         &id(code_effects),
+        &id(firecom_effects),
         &id(doorbell_effects)
       };
       std::vector<std::string>& effects = *effect_lists[current_type];
-
-      // Type indicator character
-      const char type_chars[] = {'F', 'M', 'C', 'D'};
-      char type_char = type_chars[current_type];
 
       // ===== SCREEN 0: STATUS =====
       if (current_screen == 0) {

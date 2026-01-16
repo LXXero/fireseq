@@ -68,15 +68,14 @@ light:
               id(trigger).turn_off();
             }
 
-# Add Firecom effects to code_effects list on boot
+# Add Firecom effects to firecom_effects list on boot
 esphome:
   on_boot:
     - priority: 100
       then:
         - lambda: |-
-            // Insert Firecom effects at the beginning of code_effects
-            id(code_effects).insert(id(code_effects).begin(), "Firecom Steady Tone");
-            id(code_effects).insert(id(code_effects).begin(), "Firecom Pulsed Tone");
-            id(code_effects).insert(id(code_effects).begin(), "Firecom Chime");
-            id(code_effects).insert(id(code_effects).begin(), "Firecom Whoop");
-            id(code_effects).insert(id(code_effects).begin(), "Firecom");
+            id(firecom_effects).push_back("Firecom");
+            id(firecom_effects).push_back("Firecom Whoop");
+            id(firecom_effects).push_back("Firecom Chime");
+            id(firecom_effects).push_back("Firecom Pulsed Tone");
+            id(firecom_effects).push_back("Firecom Steady Tone");

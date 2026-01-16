@@ -13,23 +13,18 @@ substitutions:
   # Inputs
   gpio_zone: 'GPIO27'
   gpio_zone_invert: 'true'
-  gpio_presignal: 'GPIO34'
-  gpio_presignal_invert: 'false'
+  gpio_presignal: 'GPIO18'
+  gpio_presignal_invert: 'true'
+  gpio_presignal_pullup: 'true'
   # I2C (for OLED)
   gpio_scl: 'GPIO16'
   gpio_sda: 'GPIO17'
-  # Panel buttons (menu layout)
-  gpio_toggle: 'GPIO19'
-  gpio_menu_up: 'GPIO21'
-  gpio_menu_down: 'GPIO18'
-  gpio_type_up: 'GPIO4'
-  gpio_type_down: 'GPIO13'
-  gpio_select_up: 'GPIO14'
-  gpio_select_down: 'GPIO22'
+  # ADC button ladder
+  gpio_buttons_adc: 'GPIO34'
 
 packages:
   main: !include main.yaml
   fire: !include includes/effects_fire.yaml
   firecom: !include includes/effects_firecom.yaml
-  buttons: !include includes/buttons_menu_gpio.yaml
+  buttons: !include includes/buttons_menu.yaml
   display: !include includes/display_oled.yaml

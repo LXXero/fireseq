@@ -269,6 +269,11 @@ globals:
    restore_value: no
    initial_value: 'std::vector<std::string>{}'
 
+ - id: firecom_effects
+   type: std::vector<std::string>
+   restore_value: no
+   initial_value: 'std::vector<std::string>{}'
+
  - id: doorbell_effects
    type: std::vector<std::string>
    restore_value: no
@@ -360,7 +365,8 @@ script:
             { 0, "fire", id(fire_effects) },
             { 1, "march", id(march_effects) },
             { 2, "code", id(code_effects) },
-            { 3, "doorbell", id(doorbell_effects) }
+            { 3, "firecom", id(firecom_effects) },
+            { 4, "doorbell", id(doorbell_effects) }
           };
 
           effects effect_map;
@@ -460,9 +466,10 @@ script:
             &id(fire_effects),
             &id(march_effects),
             &id(code_effects),
+            &id(firecom_effects),
             &id(doorbell_effects)
           };
-          int type_count = 4;
+          int type_count = 5;
           int current = id(effect_type);
           int step = (direction == "up") ? -1 : 1;
 
@@ -545,6 +552,7 @@ binary_sensor:
       inverted: ${gpio_presignal_invert}
       mode:
         input: true
+        pullup: ${gpio_presignal_pullup}
     filters:
       - delayed_on: 10ms
       - delayed_off: 100ms

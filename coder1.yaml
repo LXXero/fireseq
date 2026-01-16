@@ -15,6 +15,7 @@ substitutions:
   gpio_zone_invert: 'true'
   gpio_presignal: 'GPIO34'
   gpio_presignal_invert: 'false'
+  gpio_presignal_pullup: 'false'
   # I2C (for OLED)
   gpio_scl: 'GPIO25'
   gpio_sda: 'GPIO27'
