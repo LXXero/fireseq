@@ -7,6 +7,32 @@
 #   1 = Active: Scrollable list of stations with active alarms (not UNKNOWN/CLEAR)
 #   2 = All: Scrollable list of ALL stations with their state
 
+globals:
+  - id: howe_display_scroll
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: howe_display_mode
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: howe_last_code
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  - id: howe_last_station_name
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  - id: howe_last_status
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
 esphome:
   on_boot:
     - priority: 100
@@ -15,13 +41,47 @@ esphome:
             // Add Howe screen to display
             id(display_screens).push_back("Howe");
 
+script:
+  # Extend type handler for Howe screen
+  - id: !extend ext_type_handler
+    then:
+      - lambda: |-
+          if (id(display_screens)[id(display_screen)] == "Howe") {
+            // Cycle through Live/Active/All modes
+            if (direction == "up") {
+              id(howe_display_mode) = (id(howe_display_mode) + 2) % 3;
+            } else {
+              id(howe_display_mode) = (id(howe_display_mode) + 1) % 3;
+            }
+            id(howe_display_scroll) = 0;  // Reset scroll on mode change
+          }
+
+  # Extend select handler for Howe screen
+  - id: !extend ext_select_handler
+    then:
+      - lambda: |-
+          if (id(display_screens)[id(display_screen)] == "Howe") {
+            // Only scroll in Active/All modes (not Live)
+            if (id(howe_display_mode) >= 1) {
+              if (direction == "up") {
+                if (id(howe_display_scroll) >= 3) {
+                  id(howe_display_scroll) -= 3;
+                } else {
+                  id(howe_display_scroll) = 0;
+                }
+              } else {
+                id(howe_display_scroll) += 3;
+              }
+            }
+          }
+
 interval:
   # Update Howe display data when on Howe screen
   - interval: 200ms
     then:
       - lambda: |-
-          // Only update if on Howe screen (screen 2)
-          if (id(display_screen) != 2) return;
+          // Only update if on Howe screen
+          if (id(display_screens)[id(display_screen)] != "Howe") return;
 
           int mode = id(howe_display_mode);
 
