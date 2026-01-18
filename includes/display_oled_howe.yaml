@@ -181,8 +181,10 @@ interval:
               }
 
               if (active_stations.size() > 3) {
-                char count[16];
-                snprintf(count, sizeof(count), "(%d)", (int)active_stations.size());
+                int first = scroll + 1;
+                int last = std::min(scroll + 3, (int)active_stations.size());
+                char count[24];
+                snprintf(count, sizeof(count), "%d-%d/%d", first, last, (int)active_stations.size());
                 id(display_ext_header_right) = count;
               }
             }

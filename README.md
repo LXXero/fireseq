@@ -48,10 +48,12 @@ Decodes signals from Autocall Howe transmitters and similar electromechanical co
 - Station identification with prefix and code parsing
 - Support for multiple station types (B, BJ, BX, V-stations, waterflow)
 - Round counting to determine alarm vs reset status
-- Presignal and general alarm detection
+- Presignal, general alarm, and tamper detection
 - Round-robin detection for multiple stations on the same circuit
 - Continuous station handling
 - "Howe Follower" effect to mirror incoming signals on the code output
+- Display modes: Live (last code), Active (stations with alarms), All (all stations)
+- Modular extension architecture for adding custom display screens
 
 ## Outputs
 - Code output (Relay/FET)
