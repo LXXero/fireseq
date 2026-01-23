@@ -131,6 +131,11 @@ globals:
     type: std::map<std::string, unsigned long>
     restore_value: false
 
+  # Track last seen time for watchman stations (station_id -> millis timestamp)
+  - id: watchman_last_seen
+    type: std::map<std::string, unsigned long>
+    restore_value: false
+
   # Track rounds since each station last transmitted (for interim summary detection)
   - id: rounds_since_seen
     type: std::map<std::string, int>
@@ -367,6 +372,7 @@ binary_sensor:
             // Watchman: always single round, immediate state
             else if (mode == "watchman") {
               int prior_state = id(station_states).count(station_id) ? id(station_states)[station_id] : STATE_UNKNOWN;
+              id(watchman_last_seen)[station_id] = millis();
               if (prior_state != STATE_WATCHMAN) {
                 ESP_LOGI("howe", "  STATE: %s: WATCHMAN (immediate)", station_id.c_str());
                 id(station_states)[station_id] = STATE_WATCHMAN;
@@ -947,6 +953,7 @@ interval:
                 else new_state = STATE_WATERFLOW;
               } else if (mode == "watchman") {
                 new_state = STATE_WATCHMAN;
+                id(watchman_last_seen)[target_station_id] = millis();
               } else if (mode == "reset") {
                 new_state = STATE_CLEAR;
               } else if (mode == "v_alarm") {

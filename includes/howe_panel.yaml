@@ -97,7 +97,9 @@ output:
     id: panel_reset_output
 
   - platform: gpio
-    pin: ${gpio_panel_trouble_reset}
+    pin:
+      number: ${gpio_panel_trouble_reset}
+      ignore_strapping_warning: true
     id: panel_trouble_reset_output
 
 switch:
